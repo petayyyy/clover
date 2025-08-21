@@ -1,0 +1,15 @@
+material qr/good
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture qr_good.png
+                filtering none
+                scale 1.0 1.0
+            }
+        }
+    }
+}

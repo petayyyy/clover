@@ -93,6 +93,24 @@ new ROSLIB.Topic({ ros: ros.ros, name: ros.priv + 'error', messageType: 'std_msg
 
 var runButton = document.getElementById('run');
 
+// Update Stop button label based on selected language
+function attachLanguageHandlers() {
+	var languageSelect = document.getElementById('language');
+	var stopButton = document.querySelector('#tools button[title="Stop the program"]');
+	function updateStopLabelByLanguage() {
+		if (!stopButton || !languageSelect) return;
+		stopButton.textContent = languageSelect.value === 'ru-RU' ? 'Стоп' : 'Stop';
+	}
+	if (languageSelect) {
+		languageSelect.addEventListener('change', updateStopLabelByLanguage);
+		languageSelect.addEventListener('input', updateStopLabelByLanguage);
+		updateStopLabelByLanguage();
+	}
+}
+
+// Ensure handlers are attached when DOM is ready
+document.addEventListener('DOMContentLoaded', attachLanguageHandlers);
+
 function update() {
 	document.body.classList.toggle('running', running);
 	runButton.disabled = !ros.ros.isConnected || runRequest || running;

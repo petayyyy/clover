@@ -17,6 +17,7 @@ Blockly.Python.addReservedWords('navigate_wait,land_wait,wait_arrival,wait_yaw,g
 Blockly.Python.addReservedWords('pigpio,pi,Range');
 Blockly.Python.addReservedWords('SetLEDEffect,set_effect,led_count,get_led_count');
 Blockly.Python.addReservedWords('SetLEDs,LEDState,set_leds');
+Blockly.Python.addReservedWords('pyzbar,cv_bridge,CvBridge,Image,scan_qr_data');
 
 const IMPORT_SRV = `from clover import srv
 from std_srvs.srv import Trigger`;
@@ -522,4 +523,28 @@ Blockly.Python.set_duty_cycle = function(block) {
 	var pin = Blockly.Python.valueToCode(block, 'PIN', Blockly.Python.ORDER_NONE);
 	var dutyCycle = Blockly.Python.valueToCode(block, 'DUTY_CYCLE', Blockly.Python.ORDER_NONE);
 	return `set_duty_cycle(${pin}, ${dutyCycle})\n`;
+}
+
+// QR scan helper and generator
+const SCAN_QR_HELPERS = () => `from pyzbar import pyzbar
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+
+bridge = CvBridge()
+
+def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(timeout):
+    t0 = rospy.get_time()
+    while not rospy.is_shutdown() and rospy.get_time() - t0 < timeout:
+        img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
+        barcodes = pyzbar.decode(img)
+        if len(barcodes) != 0:
+            return barcodes[0].data.decode('utf-8')
+        rospy.sleep(0.1)
+    return ''`;
+
+Blockly.Python.scan_qr = function(block) {
+    initNode();
+    let timeout = Blockly.Python.valueToCode(block, 'TIMEOUT', Blockly.Python.ORDER_NONE) || '10';
+    let fn = Blockly.Python.provideFunction_('scan_qr_data', [SCAN_QR_HELPERS()]);
+    return [`${fn}(${timeout})`, Blockly.Python.ORDER_FUNCTION_CALL];
 }

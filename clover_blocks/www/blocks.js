@@ -633,3 +633,19 @@ Blockly.Blocks['set_duty_cycle'] = {
 		this.setHelpUrl(DOCS_URL + '#GPIO');
 	}
 };
+
+// QR scan block
+Blockly.Blocks['scan_qr'] = {
+	init: function () {
+		this.appendDummyInput()
+			.appendField("scan QR data");
+		this.appendValueInput("TIMEOUT")
+			.setCheck("Number")
+			.appendField("timeout, s");
+		this.setInputsInline(true);
+		this.setOutput(true, "String");
+		this.setColour(COLOR_STATE);
+		this.setTooltip("Returns data from the first detected QR code within timeout.");
+		this.setHelpUrl(DOCS_URL + '#' + this.type);
+	}
+};
