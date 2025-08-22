@@ -80,6 +80,21 @@ body {
 	margin-left: 10px;
 }
 
+#language-selector {
+	font-size: 14px;
+	margin-left: 10px;
+	padding: 5px;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	background: white;
+	cursor: pointer;
+}
+
+#language-selector:focus {
+	outline: none;
+	border-color: #007cba;
+}
+
 #tabs {
 	grid-area: tabs;
 	list-style: none;

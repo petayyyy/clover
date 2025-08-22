@@ -13,6 +13,7 @@
 	<script src="blockly/python_compressed.js"></script>
 	<script src="blockly/blocks_compressed.js"></script>
 	<script src="blockly/msg/js/en.js"></script>
+	<script src="lang/i18n.js"></script>
 	<script type="module" src="main.js"></script>
 </head>
 
@@ -36,6 +37,10 @@
 		<button onclick="runProgram()" disabled id="run" disabled title="Run the program">Run</button>
 		<button onclick="stopProgram()" title="Stop the program">Stop</button>
 		<button onclick="land()" title="Stop the program and land">Land</button>
+		<select id="language-selector" title="Select interface language">
+			<option value="ru-RU">Русский</option>
+			<option value="en-US">English</option>
+		</select>
 	</div>
 
 	<div id="notifications"></div>
@@ -104,7 +109,7 @@
 				<value name="CHANNEL"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
 			</block>
 		</category>
-		<category name="NEW" colour="#00d054">
+		<category name="NEW" colour="#9de0e8">
 			<block type="scan_qr">
 				<value name="TIMEOUT"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
 			</block>
