@@ -26,6 +26,8 @@ async function initializeI18n() {
             languageSelector.value = window.i18n.getCurrentLanguage();
             languageSelector.addEventListener('change', function(e) {
                 window.i18n.setLanguage(e.target.value);
+                // Force full page reload to reinitialize all resources for the new language
+                location.reload();
             });
         }
         
@@ -33,10 +35,15 @@ async function initializeI18n() {
         if (window.i18n.isInitialized()) {
             window.i18n.updateInterface();
         }
+
+        // Reveal the page only after i18n applied
+        document.body.style.visibility = 'visible';
         
         console.log('I18n system initialized successfully');
     } catch (error) {
         console.error('Failed to initialize i18n system:', error);
+        // In case of failure, ensure page is visible
+        document.body.style.visibility = 'visible';
     }
 }
 

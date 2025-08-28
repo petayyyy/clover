@@ -198,9 +198,9 @@ class I18n {
             // Update title
             document.title = this.t('title');
             
-            // Update tab labels - be more careful with these
-            const blocksTab = document.querySelector('[data-tab="blocks"]');
-            const pythonTab = document.querySelector('[data-tab="python"]');
+            // Update tab labels - scope to the tabs list to avoid matching body[data-tab]
+            const blocksTab = document.querySelector('#tabs [data-tab="blocks"]');
+            const pythonTab = document.querySelector('#tabs [data-tab="python"]');
             
             if (blocksTab && blocksTab.tagName === 'LI') {
                 blocksTab.textContent = this.t('blocks_tab');
@@ -244,7 +244,12 @@ class I18n {
             
             // Update Blockly toolbox categories
             this.updateBlocklyToolbox();
-            
+
+            // Recreate blocks so their static labels pick up the new language
+            this.refreshWorkspaceBlocks();
+
+            // Ensure toolbox/flyout reflects new labels even for the currently selected category
+            this.refreshToolboxSelection();
         } catch (error) {
             console.error('Error updating interface:', error);
         }
@@ -302,6 +307,13 @@ class I18n {
         }
         
         try {
+            // Merge current language messages into Blockly.Msg
+            if (this.currentLanguage === 'ru-RU' && typeof window !== 'undefined' && window.ruRU) {
+                Object.assign(Blockly.Msg, window.ruRU);
+            } else if (this.currentLanguage === 'en-US' && typeof window !== 'undefined' && window.enUS) {
+                Object.assign(Blockly.Msg, window.enUS);
+            }
+
             // Get toolbox XML
             const toolbox = document.getElementById('toolbox');
             if (!toolbox) return;
@@ -318,10 +330,53 @@ class I18n {
                 }
             });
             
-            // Note: Blockly toolbox categories are updated automatically
-            // when the workspace is recreated, so we don't need to manually refresh
+            // Refresh toolbox in the current workspace so changes apply immediately
+            if (window.workspace && typeof window.workspace.updateToolbox === 'function') {
+                window.workspace.updateToolbox(toolbox);
+            }
         } catch (error) {
             console.error('Failed to update Blockly toolbox:', error);
+        }
+    }
+
+    // Rebuild current workspace so block field labels reinitialize with new language
+    refreshWorkspaceBlocks() {
+        try {
+            if (!window.workspace || typeof Blockly === 'undefined') return;
+            const xml = Blockly.Xml.workspaceToDom(window.workspace);
+            window.workspace.clear();
+            Blockly.Xml.domToWorkspace(xml, window.workspace);
+        } catch (e) {
+            console.error('Failed to refresh workspace blocks:', e);
+        }
+    }
+
+    // Try to refresh toolbox/flyout selection to update visible labels immediately
+    refreshToolboxSelection() {
+        try {
+            if (!window.workspace) return;
+            const ws = window.workspace;
+            // Blockly 2019-2021 APIs
+            if (ws.getToolbox && typeof ws.getToolbox === 'function') {
+                const tb = ws.getToolbox();
+                if (tb && typeof tb.refreshSelection === 'function') {
+                    tb.refreshSelection();
+                } else if (tb && typeof tb.getSelectedItem === 'function' && typeof tb.setSelectedItem === 'function') {
+                    const sel = tb.getSelectedItem();
+                    if (sel) tb.setSelectedItem(sel);
+                }
+            } else if (ws.toolbox_ && ws.toolbox_.tree_) {
+                // Older internal API
+                const tree = ws.toolbox_.tree_;
+                if (typeof tree.setSelectedItem === 'function' && tree.selectedItem_) {
+                    tree.setSelectedItem(tree.selectedItem_);
+                }
+            }
+            if (typeof Blockly !== 'undefined' && typeof Blockly.svgResize === 'function') {
+                Blockly.svgResize(ws);
+            }
+        } catch (e) {
+            console.error('Failed to refresh toolbox selection:', e);
         }
     }
 

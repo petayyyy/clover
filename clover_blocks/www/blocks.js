@@ -14,6 +14,20 @@ const COLOR_LED = 143;
 const COLOR_GPIO = 200;
 const DOCS_URL = 'https://clover.coex.tech/en/blocks.html';
 
+// Localization helper: tries i18n, then Blockly.Msg, then fallback
+function L(key, fallback) {
+    try {
+        if (typeof window !== 'undefined' && window.i18n && typeof window.i18n.t === 'function') {
+            const t = window.i18n.t(key);
+            if (t && t !== key) return t;
+        }
+        if (typeof Blockly !== 'undefined' && Blockly.Msg && Blockly.Msg[key]) {
+            return Blockly.Msg[key];
+        }
+    } catch (e) {}
+    return fallback !== undefined ? fallback : key;
+}
+
 var frameIds = [["body", "BODY"], ["markers map", "ARUCO_MAP"], ["marker", "ARUCO"], ["last navigate target", "NAVIGATE_TARGET"], ["map", "MAP"]];
 var frameIdsWithTerrain = frameIds.concat([["terrain", "TERRAIN"]]);
 
@@ -24,13 +38,13 @@ function considerFrameId(e) {
 	// set appropriate coordinates labels
 	if (this.getInput('X')) { // block has x-y-z fields
 		if (frameId == 'BODY' || frameId == 'NAVIGATE_TARGET' || frameId == 'BASE_LINK' || frameId == 'TERRAIN') {
-			this.getInput('X').fieldRow[0].setValue('forward');
-			this.getInput('Y').fieldRow[0].setValue('left');
-			this.getInput('Z').fieldRow[0].setValue('up');
+			this.getInput('X').fieldRow[0].setValue(L('blk_forward', 'forward'));
+			this.getInput('Y').fieldRow[0].setValue(L('blk_left', 'left'));
+			this.getInput('Z').fieldRow[0].setValue(L('blk_up', 'up'));
 		} else {
-			this.getInput('X').fieldRow[0].setValue('x');
-			this.getInput('Y').fieldRow[0].setValue('y');
-			this.getInput('Z').fieldRow[0].setValue('z');
+			this.getInput('X').fieldRow[0].setValue(L('blk_x', 'x'));
+			this.getInput('Y').fieldRow[0].setValue(L('blk_y', 'y'));
+			this.getInput('Z').fieldRow[0].setValue(L('blk_z', 'z'));
 		}
 		if (this.getInput('LAT')) { // block has global coordinates
 			let global = frameId.startsWith('GLOBAL');
@@ -38,7 +52,7 @@ function considerFrameId(e) {
 			this.getInput('LON').setVisible(global);
 			this.getInput('X').setVisible(!global);
 			this.getInput('Y').setVisible(!global);
-			this.getInput('Z').fieldRow[0].setValue(frameId == 'GLOBAL' ? 'altitude' : 'z');
+			this.getInput('Z').fieldRow[0].setValue(frameId == 'GLOBAL' ? L('blk_altitude', 'altitude') : L('blk_z', 'z'));
 		}
 	}
 	if (this.getInput('ID')) { // block has marker id field
@@ -75,39 +89,39 @@ function updateSetpointBlock(e) {
 Blockly.Blocks['navigate'] = {
 	init: function () {
 		let navFrameId = frameIdsWithTerrain.slice();
-		navFrameId.push(['global', 'GLOBAL_LOCAL'])
-		navFrameId.push(['global, WGS 84 alt.', 'GLOBAL'])
+		navFrameId.push([L('blk_global_local', 'global'), 'GLOBAL_LOCAL'])
+		navFrameId.push([L('blk_global_wgs_alt', 'global, WGS 84 alt.'), 'GLOBAL'])
 		this.appendDummyInput()
-			.appendField("navigate to point");
+			.appendField(L('blk_navigate_to_point', 'navigate to point'));
 		this.appendValueInput("X")
 			.setCheck("Number")
-			.appendField("forward");
+			.appendField(L('blk_forward', 'forward'));
 		this.appendValueInput("Y")
 			.setCheck("Number")
-			.appendField("left");
+			.appendField(L('blk_left', 'left'));
 		this.appendValueInput("LAT")
 			.setCheck("Number")
-			.appendField("latitude")
+			.appendField(L('blk_latitude', 'latitude'))
 			.setVisible(false);
 		this.appendValueInput("LON")
 			.setCheck("Number")
-			.appendField("longitude")
+			.appendField(L('blk_longitude', 'longitude'))
 			.setVisible(false)
 		this.appendValueInput("Z")
 			.setCheck("Number")
-			.appendField("up");
+			.appendField(L('blk_up', 'up'));
 		this.appendDummyInput()
-			.appendField("relative to")
+			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(navFrameId), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false)
 		this.appendValueInput("SPEED")
 			.setCheck("Number")
-			.appendField("with speed");
+			.appendField(L('blk_with_speed', 'with speed'));
 		this.appendDummyInput()
-			.appendField("wait")
+			.appendField(L('blk_wait', 'wait'))
 			.appendField(new Blockly.FieldCheckbox("TRUE"), "WAIT");
 		this.setInputsInline(false);
 		this.setPreviousStatement(true, null);
@@ -122,22 +136,22 @@ Blockly.Blocks['navigate'] = {
 Blockly.Blocks['set_velocity'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("set velocity");
+			.appendField(L('blk_set_velocity', 'set velocity'));
 		this.appendValueInput("X")
 			.setCheck("Number")
-			.appendField("forward");
+			.appendField(L('blk_forward', 'forward'));
 		this.appendValueInput("Y")
 			.setCheck("Number")
-			.appendField("left");
+			.appendField(L('blk_left', 'left'));
 		this.appendValueInput("Z")
 			.setCheck("Number")
-			.appendField("up");
+			.appendField(L('blk_up', 'up'));
 		this.appendDummyInput()
-			.appendField("relative to")
+			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false)
 		this.setInputsInline(false);
 		this.setPreviousStatement(true, null);
@@ -152,40 +166,40 @@ Blockly.Blocks['set_velocity'] = {
 Blockly.Blocks['setpoint'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("set");
+			.appendField(L('blk_set', 'set'));
 		this.appendDummyInput()
-			.appendField(new Blockly.FieldDropdown([["velocity", "VELOCITY"], ["attitude", "ATTITUDE"], ["angular rates", "RATES"]]), "TYPE");
+			.appendField(new Blockly.FieldDropdown([[L('blk_velocity', 'velocity'), "VELOCITY"], [L('blk_attitude', 'attitude'), "ATTITUDE"], [L('blk_angular_rates', 'angular rates'), "RATES"]]), "TYPE");
 		this.appendValueInput("VX")
 			.setCheck("Number")
-			.appendField("vx");
+			.appendField(L('blk_vx', 'vx'));
 		this.appendValueInput("VY")
 			.setCheck("Number")
-			.appendField("vy");
+			.appendField(L('blk_vy', 'vy'));
 		this.appendValueInput("VZ")
 			.setCheck("Number")
-			.appendField("vz");
+			.appendField(L('blk_vz', 'vz'));
 		this.appendValueInput("ROLL")
 			.setCheck("Number")
-			.appendField("roll")
+			.appendField(L('blk_roll', 'roll'))
 			.setVisible(false);
 		this.appendValueInput("PITCH")
 			.setCheck("Number")
-			.appendField("pitch")
+			.appendField(L('blk_pitch', 'pitch'))
 			.setVisible(false);
 		this.appendValueInput("YAW")
 			.setCheck("Number")
-			.appendField("yaw")
+			.appendField(L('blk_yaw', 'yaw'))
 			.setVisible(false);
 		this.appendValueInput("THRUST")
 			.setCheck("Number")
-			.appendField("thrust")
+			.appendField(L('blk_thrust', 'thrust'))
 			.setVisible(false);
 		this.appendDummyInput('RELATIVE_TO')
-			.appendField("relative to")
+			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false);
 		this.setInputsInline(false);
 		this.setPreviousStatement(true, null);
@@ -200,7 +214,7 @@ Blockly.Blocks['setpoint'] = {
 Blockly.Blocks['rangefinder_distance'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current rangefinder distance");
+			.appendField(L('blk_rangefinder_distance', 'current rangefinder distance'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("");
@@ -211,13 +225,13 @@ Blockly.Blocks['rangefinder_distance'] = {
 Blockly.Blocks['get_position'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current")
-			.appendField(new Blockly.FieldDropdown([["x", "X"], ["y", "Y"], ["z", "Z"], ["vx", "VX"], ["vy", "VY"], ["vz", "VZ"]]), "FIELD")
-			.appendField("relative to")
+			.appendField(L('blk_current', 'current'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_x', 'x'), "X"], [L('blk_y', 'y'), "Y"], [L('blk_z', 'z'), "Z"], [L('blk_vx', 'vx'), "VX"], [L('blk_vy', 'vy'), "VY"], [L('blk_vz', 'vz'), "VZ"]]), "FIELD")
+			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(frameIdsWithTerrain), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false)
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
@@ -230,11 +244,11 @@ Blockly.Blocks['get_position'] = {
 Blockly.Blocks['get_yaw'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current yaw relative to")
+			.appendField(L('blk_current_yaw_relative_to', 'current yaw relative to'))
 			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false)
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
@@ -247,8 +261,8 @@ Blockly.Blocks['get_yaw'] = {
 Blockly.Blocks['get_attitude'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current")
-			.appendField(new Blockly.FieldDropdown([["roll", "ROLL"], ["pitch", "PITCH"], ["roll rate", "ROLL_RATE"], ["pitch rate", "PITCH_RATE"], ["yaw rate", "YAW_RATE"]]), "FIELD");
+			.appendField(L('blk_current', 'current'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_roll', 'roll'), "ROLL"], [L('blk_pitch', 'pitch'), "PITCH"], [L('blk_roll_rate', 'roll rate'), "ROLL_RATE"], [L('blk_pitch_rate', 'pitch rate'), "PITCH_RATE"], [L('blk_yaw_rate', 'yaw rate'), "YAW_RATE"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns current orientation or angle rates in degree or degree per second (not radian).");
@@ -259,9 +273,9 @@ Blockly.Blocks['get_attitude'] = {
 Blockly.Blocks['voltage'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current")
-			.appendField(new Blockly.FieldDropdown([["total", "VOLTAGE"], ["cell", "CELL_VOLTAGE"]]), "TYPE")
-			.appendField("voltage");
+			.appendField(L('blk_current', 'current'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_total', 'total'), "VOLTAGE"], [L('blk_cell', 'cell'), "CELL_VOLTAGE"]]), "TYPE")
+			.appendField(L('blk_voltage', 'voltage'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns current battery voltage in volts.");
@@ -272,7 +286,7 @@ Blockly.Blocks['voltage'] = {
 Blockly.Blocks['get_rc'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("RC channel")
+			.appendField(L('blk_rc_channel', 'RC channel'))
 		this.appendValueInput("CHANNEL")
 			.setCheck("Number");
 		this.setInputsInline(true);
@@ -286,7 +300,7 @@ Blockly.Blocks['get_rc'] = {
 Blockly.Blocks['armed'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("armed?");
+			.appendField(L('blk_armed_q', 'armed?'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns if the drone armed.");
@@ -298,7 +312,7 @@ Blockly.Blocks['armed'] = {
 Blockly.Blocks['mode'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current flight mode");
+			.appendField(L('blk_current_flight_mode', 'current flight mode'));
 		this.setOutput(true, "String");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns current flight mode (POSCTL, OFFBOARD, etc).");
@@ -310,7 +324,7 @@ Blockly.Blocks['mode'] = {
 Blockly.Blocks['wait_arrival'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("wait arrival");
+			.appendField(L('blk_wait_arrival', 'wait arrival'));
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
@@ -322,7 +336,7 @@ Blockly.Blocks['wait_arrival'] = {
 Blockly.Blocks['get_time'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("time");
+			.appendField(L('blk_time', 'time'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns current timestamp in seconds.");
@@ -333,7 +347,7 @@ Blockly.Blocks['get_time'] = {
 Blockly.Blocks['arrived'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("arrived?");
+			.appendField(L('blk_arrived_q', 'arrived?'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns if the drone arrived to the navigation target.");
@@ -344,12 +358,12 @@ Blockly.Blocks['arrived'] = {
 Blockly.Blocks['set_led'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("set LED");
+			.appendField(L('blk_set_led', 'set LED'));
 		this.appendValueInput("INDEX")
 			.setCheck("Number");
 		this.appendValueInput("COLOR")
 			.setCheck("Colour")
-			.appendField("to color");
+			.appendField(L('blk_to_color', 'to color'));
 		this.setInputsInline(true);
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
@@ -362,11 +376,11 @@ Blockly.Blocks['set_led'] = {
 Blockly.Blocks['set_effect'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("set LED effect")
-			.appendField(new Blockly.FieldDropdown([["fill", "FILL"], ["blink", "BLINK"], ["fast blink", "BLINK_FAST"], ["fade", "FADE"], ["wipe", "WIPE"], ["flash", "FLASH"], ["rainbow", "RAINBOW"], ["rainbow fill", "RAINBOW_FILL"]]), "EFFECT");
+			.appendField(L('blk_set_led_effect', 'set LED effect'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_fill', 'fill'), "FILL"], [L('blk_blink', 'blink'), "BLINK"], [L('blk_blink_fast', 'fast blink'), "BLINK_FAST"], [L('blk_fade', 'fade'), "FADE"], [L('blk_wipe', 'wipe'), "WIPE"], [L('blk_flash', 'flash'), "FLASH"], [L('blk_rainbow', 'rainbow'), "RAINBOW"], [L('blk_rainbow_fill', 'rainbow fill'), "RAINBOW_FILL"]]), "EFFECT");
 		this.appendValueInput("COLOR")
 			.setCheck("Colour")
-			.appendField("with color");
+			.appendField(L('blk_with_color', 'with color'));
 		this.setInputsInline(true);
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
@@ -389,7 +403,7 @@ Blockly.Blocks['set_effect'] = {
 Blockly.Blocks['led_count'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("LED count");
+			.appendField(L('blk_led_count', 'LED count'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_LED);
 		this.setTooltip("Returns the number of LEDs (configured in led.launch).");
@@ -401,9 +415,9 @@ Blockly.Blocks['take_off'] = {
 	init: function () {
 		this.appendValueInput("ALT")
 			.setCheck("Number")
-			.appendField("take off to");
+			.appendField(L('blk_take_off_to', 'take off to'));
 		this.appendDummyInput()
-			.appendField("wait")
+			.appendField(L('blk_wait', 'wait'))
 			.appendField(new Blockly.FieldCheckbox("TRUE"), "WAIT");
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
@@ -416,9 +430,9 @@ Blockly.Blocks['take_off'] = {
 Blockly.Blocks['land'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("land");
+			.appendField(L('blk_land', 'land'));
 		this.appendDummyInput()
-			.appendField("wait")
+			.appendField(L('blk_wait', 'wait'))
 			.appendField(new Blockly.FieldCheckbox("TRUE"), "WAIT");
 		this.setInputsInline(true);
 		this.setPreviousStatement(true, null);
@@ -432,8 +446,8 @@ Blockly.Blocks['land'] = {
 Blockly.Blocks['global_position'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("current")
-			.appendField(new Blockly.FieldDropdown([["latitude", "LAT"], ["longitude", "LON"], ["altitude", "ALT"]]), "FIELD");
+			.appendField(L('blk_current', 'current'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_latitude', 'latitude'), "LAT"], [L('blk_longitude', 'longitude'), "LON"], [L('blk_altitude', 'altitude'), "ALT"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("Returns current global position (latitude, longitude, altitude above the WGS 84 ellipsoid).");
@@ -445,7 +459,7 @@ Blockly.Blocks['on_take_off'] = {
 	init: function () {
 		this.appendStatementInput("TAKE_OFF")
 			.setCheck(null)
-			.appendField("When took off");
+			.appendField(L('blk_when_took_off', 'When took off'));
 		this.setColour(230);
 		this.setTooltip("");
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
@@ -456,7 +470,7 @@ Blockly.Blocks['on_landing'] = {
 	init: function () {
 		this.appendStatementInput("LAND")
 			.setCheck(null)
-			.appendField("When landed");
+			.appendField(L('blk_when_landed', 'When landed'));
 		this.setColour(230);
 		this.setTooltip("");
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
@@ -467,7 +481,7 @@ Blockly.Blocks['on_armed'] = {
 	init: function () {
 		this.appendStatementInput("ARMED")
 			.setCheck(null)
-			.appendField("when armed");
+			.appendField(L('blk_when_armed', 'when armed'));
 		this.setColour(230);
 		this.setTooltip("");
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
@@ -492,12 +506,12 @@ Blockly.Blocks['set_yaw'] = {
 	init: function () {
 		this.appendValueInput("YAW")
 			.setCheck("Number")
-			.appendField("rotate by");
+			.appendField(L('blk_rotate_by', 'rotate by'));
 		this.appendDummyInput()
-			.appendField("relative to")
-			.appendField(new Blockly.FieldDropdown([["body", "body"], ["markers map", "aruco_map"], ["last navigate target", "navigate_target"]]), "FRAME_ID");
+			.appendField(L('blk_relative_to', 'relative to'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_body', 'body'), "body"], [L('blk_markers_map', 'markers map'), "aruco_map"], [L('blk_last_navigate_target', 'last navigate target'), "navigate_target"]]), "FRAME_ID");
 		this.appendDummyInput()
-			.appendField("wait")
+			.appendField(L('blk_wait', 'wait'))
 			.appendField(new Blockly.FieldCheckbox("TRUE"), "WAIT");
 		this.setInputsInline(true);
 		this.setPreviousStatement(true, null);
@@ -511,22 +525,22 @@ Blockly.Blocks['set_yaw'] = {
 Blockly.Blocks['distance'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("distance to point");
+			.appendField(L('blk_distance_to_point', 'distance to point'));
 		this.appendValueInput("X")
 			.setCheck("Number")
-			.appendField("x");
+			.appendField(L('blk_x', 'x'));
 		this.appendValueInput("Y")
 			.setCheck("Number")
-			.appendField("y");
+			.appendField(L('blk_y', 'y'));
 		this.appendValueInput("Z")
 			.setCheck("Number")
-			.appendField("z");
+			.appendField(L('blk_z', 'z'));
 		this.appendDummyInput()
-			.appendField("relative to")
-			.appendField(new Blockly.FieldDropdown([["markers map", "ARUCO_MAP"], ["marker", "ARUCO"], ["last navigate target", "NAVIGATE_TARGET"], ["terrain", "TERRAIN"]]), "FRAME_ID");
+			.appendField(L('blk_relative_to', 'relative to'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_markers_map', 'markers map'), "ARUCO_MAP"], [L('blk_marker', 'marker'), "ARUCO"], [L('blk_last_navigate_target', 'last navigate target'), "NAVIGATE_TARGET"], [L('blk_terrain', 'terrain'), "TERRAIN"]]), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
-			.appendField("with ID")
+			.appendField(L('blk_with_id', 'with ID'))
 			.setVisible(false);
 		this.setInputsInline(false);
 		this.setOutput(true, "Number");
@@ -540,11 +554,11 @@ Blockly.Blocks['distance'] = {
 Blockly.Blocks['wait'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("wait");
+			.appendField(L('blk_wait', 'wait'));
 		this.appendValueInput("TIME")
 			.setCheck("Number");
 		this.appendDummyInput()
-			.appendField("seconds");
+			.appendField(L('blk_seconds', 'seconds'));
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
@@ -558,9 +572,9 @@ var keys = [['up', 'UP'], ['down', 'DOWN'], ['left', 'LEFT'], ['right', 'RIGHT']
 Blockly.Blocks['key_pressed'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("key")
+			.appendField(L('blk_key', 'key'))
 			.appendField(new Blockly.FieldDropdown(keys, "NAME"))
-			.appendField("pressed");
+			.appendField(L('blk_pressed', 'pressed'));
 		this.appendStatementInput("PRESSED")
 			.setCheck(null);
 		this.setPreviousStatement(true, null);
@@ -575,7 +589,7 @@ Blockly.Blocks['gpio_read'] = {
 	init: function () {
 		this.appendValueInput("PIN")
 			.setCheck("Number")
-			.appendField("read GPIO pin");
+			.appendField(L('blk_read_gpio_pin', 'read GPIO pin'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_GPIO);
 		this.setTooltip("Returns if there is voltage on a GPIO pin.");
@@ -587,10 +601,10 @@ Blockly.Blocks['gpio_write'] = {
 	init: function () {
 		this.appendValueInput("PIN")
 			.setCheck("Number")
-			.appendField("set GPIO pin");
+			.appendField(L('blk_set_gpio_pin', 'set GPIO pin'));
 		this.appendValueInput("LEVEL")
 			.setCheck("Boolean")
-			.appendField("to");
+			.appendField(L('blk_to', 'to'));
 		this.setInputsInline(true);
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
@@ -604,10 +618,10 @@ Blockly.Blocks['set_servo'] = {
 	init: function () {
 		this.appendValueInput("PIN")
 			.setCheck("Number")
-			.appendField("set GPIO pin");
+			.appendField(L('blk_set_gpio_pin', 'set GPIO pin'));
 		this.appendValueInput("PWM")
 			.setCheck("Number")
-			.appendField("to PWM");
+			.appendField(L('blk_to_pwm', 'to PWM'));
 		this.setInputsInline(true);
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
@@ -621,10 +635,10 @@ Blockly.Blocks['set_duty_cycle'] = {
 	init: function () {
 		this.appendValueInput("PIN")
 			.setCheck("Number")
-			.appendField("set GPIO pin");
+			.appendField(L('blk_set_gpio_pin', 'set GPIO pin'));
 		this.appendValueInput("DUTY_CYCLE")
 			.setCheck("Number")
-			.appendField("to duty cycle");
+			.appendField(L('blk_to_duty_cycle', 'to duty cycle'));
 		this.setInputsInline(true);
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
@@ -638,10 +652,10 @@ Blockly.Blocks['set_duty_cycle'] = {
 Blockly.Blocks['scan_qr'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField("scan QR data");
+			.appendField(L('blk_scan_qr_data', 'scan QR data'));
 		this.appendValueInput("TIMEOUT")
 			.setCheck("Number")
-			.appendField("timeout, s");
+			.appendField(L('blk_timeout_s', 'timeout, s'));
 		this.setInputsInline(true);
 		this.setOutput(true, "String");
 		this.setColour(COLOR_STATE);
