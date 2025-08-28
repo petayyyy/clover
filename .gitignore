@@ -7,3 +7,9 @@ package-lock.json
 clover_blocks/programs/*.*
 !clover_blocks/programs/examples/*
 /.vscode/
+
+__pycache__/
+test/
+_book/
+package.json
+package-lock.json

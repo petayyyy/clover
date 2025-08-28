@@ -26,7 +26,7 @@
         <env name="PX4_ESTIMATOR" value="$(arg est)"/>
     </node>
 
-    <!-- Clover model -->
+    <!-- Clover model 
     <include file="$(find clover_description)/launch/spawn_drone.launch" if="$(eval type == 'gazebo')">
         <arg name="main_camera" value="$(arg main_camera)"/>
         <arg name="maintain_camera_rate" value="$(arg maintain_camera_rate)"/>
@@ -34,7 +34,7 @@
         <arg name="led" value="$(arg led)"/>
         <arg name="gps" value="$(arg gps)"/>
         <arg name="use_clover_physics" value="$(arg use_clover_physics)"/>
-    </include>
+    </include>-->
 
     <node name="jmavsim" pkg="px4" required="true" type="jmavsim_run.sh" output="screen" if="$(eval type == 'jmavsim')">
         <env name="HEADLESS" value="1" if="$(eval not gui)"/>
