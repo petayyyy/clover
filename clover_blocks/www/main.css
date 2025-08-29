@@ -30,22 +30,128 @@ body {
 	align-items: center;
 }
 
-#program-name {
-	width: 150px;
-	border: none;
+/* Общие стили для всех селекторов */
+.selector {
 	font-size: 14px;
-	padding: 5px;
-	outline: none;
-	background: transparent;
-	text-overflow: ellipsis;
+	margin-left: 10px;
+	padding: 8px 12px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: white;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	min-height: 20px;
 }
 
-#program-name:focus {
-	background: white;
+.selector:hover {
+	border-color: #999;
+	box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+	transform: translateY(-1px);
+}
+
+.selector:focus {
+	outline: none;
+	border-color: #007cba;
+	box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+}
+
+/* Стили для отключенных селекторов */
+.selector:disabled {
+	background: #f5f5f5;
+	color: #999;
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+/* Специфичные стили для селектора имени программы */
+#program-name {
+	width: 150px;
+	text-overflow: ellipsis;
 }
 
 .changed #program-name {
 	color: red;
+}
+
+/* Стили для опций внутри селекторов */
+.selector option {
+	padding: 8px 12px;
+	background: white;
+	color: #333;
+}
+
+.selector option:hover {
+	background: #f5f5f5;
+}
+
+.selector optgroup {
+	font-weight: bold;
+	color: #666;
+}
+
+/* Современные стили для кнопок */
+#tools button {
+	font-size: 16px;
+	margin-left: 12px;
+	padding: 10px 16px;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	min-height: 40px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+#tools button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#tools button:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Специальные стили для кнопки Run */
+#run {
+	width: 80px;
+	background: linear-gradient(135deg, #4CAF50, #45a049);
+	color: white;
+}
+
+#run:hover {
+	background: linear-gradient(135deg, #45a049, #3d8b40);
+}
+
+#run:disabled {
+	background: #ccc;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Специальные стили для кнопки Stop - мягко красная */
+#stop {
+	background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+	color: white;
+}
+
+#stop:hover {
+	background: linear-gradient(135deg, #ee5a52, #d63031);
+}
+
+/* Специальные стили для кнопки Land */
+#land {
+	background: linear-gradient(135deg, #f39c12, #e67e22);
+	color: white;
+}
+
+#land:hover {
+	background: linear-gradient(135deg, #e67e22, #d35400);
 }
 
 .disconnected {
@@ -75,26 +181,6 @@ body {
 
 .running #running { display: block; }
 
-#tools button {
-	font-size: 20px;
-	margin-left: 10px;
-}
-
-#language-selector {
-	font-size: 14px;
-	margin-left: 10px;
-	padding: 5px;
-	border: 1px solid #ccc;
-	border-radius: 3px;
-	background: white;
-	cursor: pointer;
-}
-
-#language-selector:focus {
-	outline: none;
-	border-color: #007cba;
-}
-
 #tabs {
 	grid-area: tabs;
 	list-style: none;
@@ -113,10 +199,6 @@ body {
 	background: white;
 }
 
-#run {
-	width: 70px;
-}
-
 #notifications {
 	position: absolute;
 	right: 10px;
@@ -124,7 +206,6 @@ body {
 	color: white;
 	max-width: 350px;
 	top: 53px;
-	/* border: white solid 3px; */
 	z-index: 1;
 	padding: 10px;
 	font-family: monospace;
@@ -147,5 +228,42 @@ body[data-tab="python"] #python { display: block !important; }
 #python {
 	margin: 0px;
 	padding: 10px;
-	z-index: 999999; /* overlap some Blockly's popups */
+	z-index: 999999;
+}
+
+/* Поддержка RTL языков */
+[lang="ar"], [lang="he"], [lang="fa"] {
+	direction: rtl;
+}
+
+[lang="ar"] #tools button,
+[lang="he"] #tools button,
+[lang="fa"] #tools button {
+	margin-left: 0;
+	margin-right: 12px;
+}
+
+[lang="ar"] .selector,
+[lang="he"] .selector,
+[lang="fa"] .selector {
+	margin-left: 0;
+	margin-right: 10px;
+}
+
+/* Адаптивные отступы для разных размеров экрана */
+@media (max-width: 768px) {
+	#tools button {
+		margin-left: 8px;
+		padding: 8px 12px;
+		font-size: 14px;
+	}
+	
+	.selector {
+		margin-left: 8px;
+		padding: 6px 10px;
+	}
+	
+	#run {
+		width: 70px;
+	}
 }

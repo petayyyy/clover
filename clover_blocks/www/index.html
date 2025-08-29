@@ -28,7 +28,7 @@
 		<div class="disconnected">Disconnected</div>
 		<div class="backend-fail">Failed to contact with <code>clover_blocks</code> node, see <a href="../clover/docs/en/blocks.html#configuration" target="_blank">configuration</a> documentation.</div>
 		<div id="running">Running...</div>
-		<select id="program-name" title="Files are saved in <package_path>/programs/.">
+		<select id="program-name" class="selector" title="Files are saved in <package_path>/programs/.">
 				<option value="" disabled selected>&lt;Unsaved&gt;</option>
 				<option value="@clear">Clear...</option>
 				<option style="font-style: italic;" value="@save">Save... (Ctrl+S)</option>
@@ -36,9 +36,9 @@
 			<optgroup label="Examples" data-type="example"></optgroup>
 		</select>
 		<button onclick="runProgram()" disabled id="run" disabled title="Run the program">Run</button>
-		<button onclick="stopProgram()" title="Stop the program">Stop</button>
-		<button onclick="land()" title="Stop the program and land">Land</button>
-		<select id="language-selector" title="Select interface language">
+		<button onclick="stopProgram()" id="stop" title="Stop the program">Stop</button>
+		<button onclick="land()" id="land" title="Stop the program and land">Land</button>
+		<select id="language-selector" class="selector" title="Select interface language">
 			<option value="ru-RU">Русский</option>
 			<option value="en-US">English</option>
 		</select>
