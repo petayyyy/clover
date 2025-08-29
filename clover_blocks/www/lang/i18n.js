@@ -385,6 +385,7 @@ class I18n {
         const categoryMap = {
             'Flight': 'flight_category',
             'State': 'state_category',
+            'NEW': 'new_category',
             'LED': 'led_category',
             'GPIO': 'gpio_category',
             'Logic': 'logic_category',
