@@ -84,6 +84,8 @@ class I18n {
         try {
             // Load translation files
             await this.loadTranslations();
+            // Load Blockly built-in messages for current language
+            await this.loadBlocklyMessages(this.currentLanguage);
             
             // Apply initial language without updating interface immediately
             this.currentLanguage = this.currentLanguage;
@@ -180,6 +182,9 @@ class I18n {
         
         // Update document language attribute
         document.documentElement.lang = language.startsWith('ru') ? 'ru' : 'en';
+        
+        // Load Blockly messages for the selected language before updating UI
+        await this.loadBlocklyMessages(language);
         
         // Only update interface if DOM is ready
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -419,6 +424,40 @@ class I18n {
     // Check if i18n is initialized
     isInitialized() {
         return this.initialized;
+    }
+
+    // Load Blockly built-in message bundle for a given language
+    async loadBlocklyMessages(language) {
+        if (typeof document === 'undefined') return;
+        const code = language.startsWith('ru') ? 'ru' : 'en';
+        const localPath = `blockly/msg/js/${code}.js`;
+        const cdnPath = `https://unpkg.com/blockly/msg/${code}.js`;
+        
+        // If already loaded for this code, skip
+        if (window.__blocklyMsgLang === code) return;
+        
+        // Try local file first
+        const loaded = await this.injectScript(localPath).catch(() => false);
+        if (!loaded) {
+            await this.injectScript(cdnPath).catch(() => {});
+        }
+        window.__blocklyMsgLang = code;
+    }
+
+    // Helper to inject a script and resolve when loaded
+    injectScript(src) {
+        return new Promise((resolve, reject) => {
+            try {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = () => resolve(true);
+                script.onerror = () => reject(false);
+                document.head.appendChild(script);
+            } catch (e) {
+                reject(false);
+            }
+        });
     }
 }
 
