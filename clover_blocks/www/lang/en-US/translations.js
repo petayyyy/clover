@@ -152,7 +152,35 @@ const enUs = {
         to_pwm: 'to PWM',
         to_duty_cycle: 'to duty cycle',
         scan_qr_data: 'scan QR data',
-        timeout_s: 'timeout, s'
+        timeout_s: 'timeout, s',
+
+        // Tooltips
+        tooltip_navigate: 'Navigate to the specified point, coordinates are in meters.',
+        tooltip_set_velocity: 'Set the drone velocity in meters per second (cancels navigation requests).',
+        tooltip_setpoint: "Set the drone's setpoints of different types (cancels navigation requests).",
+        tooltip_get_position: 'Returns current position or velocity in meters or meters per second.',
+        tooltip_get_yaw: 'Returns current yaw in degree (not radian).',
+        tooltip_get_attitude: 'Returns current orientation or angle rates in degree or degree per second (not radian).',
+        tooltip_voltage: 'Returns current battery voltage in volts.',
+        tooltip_get_rc: 'Returns current RC channel value.',
+        tooltip_armed: 'Returns if the drone armed.',
+        tooltip_mode: 'Returns current flight mode (POSCTL, OFFBOARD, etc).',
+        tooltip_wait_arrival: 'Wait until the drone arrives to the navigation target.',
+        tooltip_get_time: 'Returns current timestamp in seconds.',
+        tooltip_arrived: 'Returns if the drone arrived to the navigation target.',
+        tooltip_set_led: 'Set an individual LED to specified color.',
+        tooltip_set_effect: 'Set desired LED strip effect.',
+        tooltip_led_count: 'Returns the number of LEDs (configured in led.launch).',
+        tooltip_take_off: 'Take off on desired altitude in meters.',
+        tooltip_land: 'Land the drone.',
+        tooltip_global_position: 'Returns current global position (latitude, longitude, altitude above the WGS 84 ellipsoid).',
+        tooltip_set_yaw: 'Rotate the drone to the specified angle in degree (not radian).',
+        tooltip_distance: 'Returns the distance to the given point in meters.',
+        tooltip_gpio_read: 'Returns if there is voltage on a GPIO pin.',
+        tooltip_gpio_write: 'Set GPIO pin level.',
+        tooltip_set_servo: 'Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.',
+        tooltip_set_duty_cycle: 'Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.',
+        tooltip_scan_qr: 'Returns data from the first detected QR code within timeout.'
     }
 };
 

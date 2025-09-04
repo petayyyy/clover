@@ -130,7 +130,7 @@ Blockly.Blocks['navigate'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Navigate to the specified point, coordinates are in meters.");
+		this.setTooltip(L('blk_tooltip_navigate', 'Navigate to the specified point, coordinates are in meters.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
@@ -160,7 +160,7 @@ Blockly.Blocks['set_velocity'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Set the drone velocity in meters per second (cancels navigation requests).");
+		this.setTooltip(L('blk_tooltip_set_velocity', "Set the drone velocity in meters per second (cancels navigation requests)."));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
@@ -208,7 +208,7 @@ Blockly.Blocks['setpoint'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Set the drone's setpoints of different types (cancels navigation requests).");
+		this.setTooltip(L('blk_tooltip_setpoint', "Set the drone's setpoints of different types (cancels navigation requests)."));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(updateSetpointBlock);
 	}
@@ -238,7 +238,7 @@ Blockly.Blocks['get_position'] = {
 			.setVisible(false)
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current position or velocity in meters or meters per second.");
+		this.setTooltip(L('blk_tooltip_get_position', 'Returns current position or velocity in meters or meters per second.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
@@ -255,7 +255,7 @@ Blockly.Blocks['get_yaw'] = {
 			.setVisible(false)
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current yaw in degree (not radian).");
+		this.setTooltip(L('blk_tooltip_get_yaw', 'Returns current yaw in degree (not radian).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
@@ -268,7 +268,7 @@ Blockly.Blocks['get_attitude'] = {
 			.appendField(new Blockly.FieldDropdown([[L('blk_roll', 'roll'), "ROLL"], [L('blk_pitch', 'pitch'), "PITCH"], [L('blk_roll_rate', 'roll rate'), "ROLL_RATE"], [L('blk_pitch_rate', 'pitch rate'), "PITCH_RATE"], [L('blk_yaw_rate', 'yaw rate'), "YAW_RATE"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current orientation or angle rates in degree or degree per second (not radian).");
+		this.setTooltip(L('blk_tooltip_get_attitude', 'Returns current orientation or angle rates in degree or degree per second (not radian).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -281,7 +281,7 @@ Blockly.Blocks['voltage'] = {
 			.appendField(L('blk_voltage', 'voltage'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current battery voltage in volts.");
+		this.setTooltip(L('blk_tooltip_voltage', 'Returns current battery voltage in volts.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -295,7 +295,7 @@ Blockly.Blocks['get_rc'] = {
 		this.setInputsInline(true);
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current RC channel value.");
+		this.setTooltip(L('blk_tooltip_get_rc', 'Returns current RC channel value.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 }
@@ -306,7 +306,7 @@ Blockly.Blocks['armed'] = {
 			.appendField(L('blk_armed_q', 'armed?'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns if the drone armed.");
+		this.setTooltip(L('blk_tooltip_armed', 'Returns if the drone armed.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -318,7 +318,7 @@ Blockly.Blocks['mode'] = {
 			.appendField(L('blk_current_flight_mode', 'current flight mode'));
 		this.setOutput(true, "String");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current flight mode (POSCTL, OFFBOARD, etc).");
+		this.setTooltip(L('blk_tooltip_mode', 'Returns current flight mode (POSCTL, OFFBOARD, etc).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -331,7 +331,7 @@ Blockly.Blocks['wait_arrival'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Wait until the drone arrives to the navigation target.");
+		this.setTooltip(L('blk_tooltip_wait_arrival', 'Wait until the drone arrives to the navigation target.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -342,7 +342,7 @@ Blockly.Blocks['get_time'] = {
 			.appendField(L('blk_time', 'time'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current timestamp in seconds.");
+		this.setTooltip(L('blk_tooltip_get_time', 'Returns current timestamp in seconds.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -353,7 +353,7 @@ Blockly.Blocks['arrived'] = {
 			.appendField(L('blk_arrived_q', 'arrived?'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns if the drone arrived to the navigation target.");
+		this.setTooltip(L('blk_tooltip_arrived', 'Returns if the drone arrived to the navigation target.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -371,7 +371,7 @@ Blockly.Blocks['set_led'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_LED);
-		this.setTooltip("Set an individual LED to specified color.");
+		this.setTooltip(L('blk_tooltip_set_led', 'Set an individual LED to specified color.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -388,7 +388,7 @@ Blockly.Blocks['set_effect'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_LED);
-		this.setTooltip("Set desired LED strip effect.");
+		this.setTooltip(L('blk_tooltip_set_effect', 'Set desired LED strip effect.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 
 		this.setOnChange(function(e) {
@@ -409,7 +409,7 @@ Blockly.Blocks['led_count'] = {
 			.appendField(L('blk_led_count', 'LED count'));
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_LED);
-		this.setTooltip("Returns the number of LEDs (configured in led.launch).");
+		this.setTooltip(L('blk_tooltip_led_count', 'Returns the number of LEDs (configured in led.launch).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -425,7 +425,7 @@ Blockly.Blocks['take_off'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Take off on desired altitude in meters.");
+		this.setTooltip(L('blk_tooltip_take_off', 'Take off on desired altitude in meters.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -441,7 +441,7 @@ Blockly.Blocks['land'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Land the drone.");
+		this.setTooltip(L('blk_tooltip_land', 'Land the drone.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -453,7 +453,7 @@ Blockly.Blocks['global_position'] = {
 			.appendField(new Blockly.FieldDropdown([[L('blk_latitude', 'latitude'), "LAT"], [L('blk_longitude', 'longitude'), "LON"], [L('blk_altitude', 'altitude'), "ALT"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns current global position (latitude, longitude, altitude above the WGS 84 ellipsoid).");
+		this.setTooltip(L('blk_tooltip_global_position', 'Returns current global position (latitude, longitude, altitude above the WGS 84 ellipsoid).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -520,7 +520,7 @@ Blockly.Blocks['set_yaw'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
-		this.setTooltip("Rotate the drone to the specified angle in degree (not radian).");
+		this.setTooltip(L('blk_tooltip_set_yaw', 'Rotate the drone to the specified angle in degree (not radian).'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
@@ -549,7 +549,7 @@ Blockly.Blocks['distance'] = {
 		this.setInputsInline(false);
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns the distance to the given point in meters.");
+		this.setTooltip(L('blk_tooltip_distance', 'Returns the distance to the given point in meters.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
@@ -596,7 +596,7 @@ Blockly.Blocks['gpio_read'] = {
 			.appendField(L('blk_read_gpio_pin', 'read GPIO pin'));
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_GPIO);
-		this.setTooltip("Returns if there is voltage on a GPIO pin.");
+		this.setTooltip(L('blk_tooltip_gpio_read', 'Returns if there is voltage on a GPIO pin.'));
 		this.setHelpUrl(DOCS_URL + '#GPIO');
 	}
 };
@@ -613,7 +613,7 @@ Blockly.Blocks['gpio_write'] = {
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
-		this.setTooltip("Set GPIO pin level.");
+		this.setTooltip(L('blk_tooltip_gpio_write', 'Set GPIO pin level.'));
 		this.setHelpUrl(DOCS_URL + '#GPIO');
 	}
 };
@@ -630,7 +630,7 @@ Blockly.Blocks['set_servo'] = {
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
-		this.setTooltip("Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.");
+		this.setTooltip(L('blk_tooltip_set_servo', 'Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.'));
 		this.setHelpUrl(DOCS_URL + '#GPIO');
 	}
 };
@@ -647,7 +647,7 @@ Blockly.Blocks['set_duty_cycle'] = {
 		this.setColour(COLOR_GPIO);
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
-		this.setTooltip("Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.");
+		this.setTooltip(L('blk_tooltip_set_duty_cycle', 'Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.'));
 		this.setHelpUrl(DOCS_URL + '#GPIO');
 	}
 };
@@ -663,7 +663,7 @@ Blockly.Blocks['scan_qr'] = {
 		this.setInputsInline(true);
 		this.setOutput(true, "String");
 		this.setColour(COLOR_STATE);
-		this.setTooltip("Returns data from the first detected QR code within timeout.");
+		this.setTooltip(L('blk_tooltip_scan_qr', 'Returns data from the first detected QR code within timeout.'));
 		this.setHelpUrl(DOCS_URL + '#' + this.type);
 	}
 };
