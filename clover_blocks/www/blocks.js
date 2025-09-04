@@ -28,8 +28,8 @@ function L(key, fallback) {
     return fallback !== undefined ? fallback : key;
 }
 
-var frameIds = [["body", "BODY"], ["markers map", "ARUCO_MAP"], ["marker", "ARUCO"], ["last navigate target", "NAVIGATE_TARGET"], ["map", "MAP"]];
-var frameIdsWithTerrain = frameIds.concat([["terrain", "TERRAIN"]]);
+var frameIds = [[L('blk_body', 'body'), "BODY"], [L('blk_markers_map', 'markers map'), "ARUCO_MAP"], [L('blk_marker', 'marker'), "ARUCO"], [L('blk_last_navigate_target', 'last navigate target'), "NAVIGATE_TARGET"], [L('blk_map', 'map'), "MAP"]];
+var frameIdsWithTerrain = frameIds.concat([[L('blk_terrain', 'terrain'), "TERRAIN"]]);
 
 function considerFrameId(e) {
 	if (!(e instanceof Blockly.Events.Change || e instanceof Blockly.Events.Create)) return;
@@ -512,7 +512,7 @@ Blockly.Blocks['set_yaw'] = {
 			.appendField(L('blk_rotate_by', 'rotate by'));
 		this.appendDummyInput()
 			.appendField(L('blk_relative_to', 'relative to'))
-			.appendField(new Blockly.FieldDropdown([[L('blk_body', 'body'), "body"], [L('blk_markers_map', 'markers map'), "aruco_map"], [L('blk_last_navigate_target', 'last navigate target'), "navigate_target"]]), "FRAME_ID");
+			.appendField(new Blockly.FieldDropdown([[L('blk_body', 'body'), "BODY"], [L('blk_markers_map', 'markers map'), "ARUCO_MAP"], [L('blk_last_navigate_target', 'last navigate target'), "NAVIGATE_TARGET"]]), "FRAME_ID");
 		this.appendDummyInput()
 			.appendField(L('blk_wait', 'wait'))
 			.appendField(new Blockly.FieldCheckbox("TRUE"), "WAIT");
