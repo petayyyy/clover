@@ -80,7 +80,7 @@ const enUs = {
         up: 'up',
         x: 'x',
         y: 'y',
-        z: 'z',
+        z: 'height(Z)',
         altitude: 'altitude',
         global_local: 'global',
         global_wgs_alt: 'global, WGS 84 alt.',

@@ -28,8 +28,13 @@ function L(key, fallback) {
     return fallback !== undefined ? fallback : key;
 }
 
-var frameIds = [[L('blk_body', 'body'), "BODY"], [L('blk_markers_map', 'markers map'), "ARUCO_MAP"], [L('blk_marker', 'marker'), "ARUCO"], [L('blk_last_navigate_target', 'last navigate target'), "NAVIGATE_TARGET"], [L('blk_map', 'map'), "MAP"]];
-var frameIdsWithTerrain = frameIds.concat([[L('blk_terrain', 'terrain'), "TERRAIN"]]);
+function getFrameIds() {
+	return [[L('blk_body', 'body'), "BODY"], [L('blk_markers_map', 'markers map'), "ARUCO_MAP"], [L('blk_marker', 'marker'), "ARUCO"], [L('blk_last_navigate_target', 'last navigate target'), "NAVIGATE_TARGET"], [L('blk_map', 'map'), "MAP"]];
+}
+
+function getFrameIdsWithTerrain() {
+	return getFrameIds().concat([[L('blk_terrain', 'terrain'), "TERRAIN"]]);
+}
 
 function considerFrameId(e) {
 	if (!(e instanceof Blockly.Events.Change || e instanceof Blockly.Events.Create)) return;
@@ -88,7 +93,7 @@ function updateSetpointBlock(e) {
 
 Blockly.Blocks['navigate'] = {
 	init: function () {
-		let navFrameId = frameIdsWithTerrain.slice();
+		let navFrameId = getFrameIdsWithTerrain().slice();
 		navFrameId.push([L('blk_global_local', 'global'), 'GLOBAL_LOCAL'])
 		navFrameId.push([L('blk_global_wgs_alt', 'global, WGS 84 alt.'), 'GLOBAL'])
 		this.appendDummyInput()
@@ -151,7 +156,7 @@ Blockly.Blocks['set_velocity'] = {
 			.appendField(L('blk_up', 'up'));
 		this.appendDummyInput()
 			.appendField(L('blk_relative_to', 'relative to'))
-			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
+			.appendField(new Blockly.FieldDropdown(getFrameIds()), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
 			.appendField(L('blk_with_id', 'with ID'))
@@ -199,7 +204,7 @@ Blockly.Blocks['setpoint'] = {
 			.setVisible(false);
 		this.appendDummyInput('RELATIVE_TO')
 			.appendField(L('blk_relative_to', 'relative to'))
-			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
+			.appendField(new Blockly.FieldDropdown(getFrameIds()), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
 			.appendField(L('blk_with_id', 'with ID'))
@@ -231,7 +236,7 @@ Blockly.Blocks['get_position'] = {
 			.appendField(L('blk_current1', 'current1'))
 			.appendField(new Blockly.FieldDropdown([[L('blk_x', 'x'), "X"], [L('blk_y', 'y'), "Y"], [L('blk_z', 'z'), "Z"], [L('blk_vx', 'vx'), "VX"], [L('blk_vy', 'vy'), "VY"], [L('blk_vz', 'vz'), "VZ"]]), "FIELD")
 			.appendField(L('blk_relative_to', 'relative to'))
-			.appendField(new Blockly.FieldDropdown(frameIdsWithTerrain), "FRAME_ID");
+			.appendField(new Blockly.FieldDropdown(getFrameIdsWithTerrain()), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
 			.appendField(L('blk_with_id', 'with ID'))
@@ -248,7 +253,7 @@ Blockly.Blocks['get_yaw'] = {
 	init: function () {
 		this.appendDummyInput()
 			.appendField(L('blk_current_yaw_relative_to', 'current yaw relative to'))
-			.appendField(new Blockly.FieldDropdown(frameIds), "FRAME_ID");
+			.appendField(new Blockly.FieldDropdown(getFrameIds()), "FRAME_ID");
 		this.appendValueInput("ID")
 			.setCheck("Number")
 			.appendField(L('blk_with_id', 'with ID'))

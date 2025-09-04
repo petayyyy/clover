@@ -81,7 +81,7 @@ const ruRu = {
         up: 'высота(Z)',
         x: 'x',
         y: 'y',
-        z: 'z',
+        z: 'высота(Z)',
         altitude: 'высота',
         global_local: 'глобальные',
         global_wgs_alt: 'глобальные, выс. WGS 84',
