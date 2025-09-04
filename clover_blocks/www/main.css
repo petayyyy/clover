@@ -118,7 +118,6 @@ body {
 
 /* Специальные стили для кнопки Run */
 #run {
-	width: 80px;
 	background: linear-gradient(135deg, #4CAF50, #45a049);
 	color: white;
 }
@@ -144,14 +143,21 @@ body {
 	background: linear-gradient(135deg, #ee5a52, #d63031);
 }
 
-/* Специальные стили для кнопки Land */
+/* Специальные стили для кнопки Land - оранжевая без градиента */
 #land {
-	background: linear-gradient(135deg, #f39c12, #e67e22);
+	background: #f39c12;
 	color: white;
 }
 
 #land:hover {
-	background: linear-gradient(135deg, #e67e22, #d35400);
+	background: #e67e22;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#land:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .disconnected {
@@ -248,6 +254,42 @@ body[data-tab="python"] #python { display: block !important; }
 [lang="fa"] .selector {
 	margin-left: 0;
 	margin-right: 10px;
+}
+
+/* Поддержка русской локализации - исправленные отступы */
+[lang="ru"], [lang="ru-RU"] {
+	direction: ltr;
+}
+
+[lang="ru"] #tools button,
+[lang="ru-RU"] #tools button {
+	margin-left: 12px !important;
+	margin-right: 0 !important;
+}
+
+[lang="ru"] .selector,
+[lang="ru-RU"] .selector {
+	margin-left: 10px !important;
+	margin-right: 0 !important;
+}
+
+/* Специфичные стили для кнопок в русской локализации */
+/* [lang="ru"] #run,
+[lang="ru-RU"] #run {
+	margin-left: 102px !important;
+	margin-right: 102px !important;
+} */
+
+[lang="ru"] #stop,
+[lang="ru-RU"] #stop {
+	margin-left: 12px !important;
+	margin-right: 0 !important;
+}
+
+[lang="ru"] #land,
+[lang="ru-RU"] #land {
+	margin-left: 12px !important;
+	margin-right: 0 !important;
 }
 
 /* Адаптивные отступы для разных размеров экрана */

@@ -99,6 +99,9 @@ Blockly.Blocks['navigate'] = {
 		this.appendValueInput("Y")
 			.setCheck("Number")
 			.appendField(L('blk_left', 'left'));
+		this.appendValueInput("Z")
+			.setCheck("Number")
+			.appendField(L('blk_up', 'up'));
 		this.appendValueInput("LAT")
 			.setCheck("Number")
 			.appendField(L('blk_latitude', 'latitude'))
@@ -107,9 +110,9 @@ Blockly.Blocks['navigate'] = {
 			.setCheck("Number")
 			.appendField(L('blk_longitude', 'longitude'))
 			.setVisible(false)
-		this.appendValueInput("Z")
-			.setCheck("Number")
-			.appendField(L('blk_up', 'up'));
+		// this.appendValueInput("Z")
+		// 	.setCheck("Number")
+		// 	.appendField(L('blk_up', 'up'));
 		this.appendDummyInput()
 			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(navFrameId), "FRAME_ID");
@@ -225,7 +228,7 @@ Blockly.Blocks['rangefinder_distance'] = {
 Blockly.Blocks['get_position'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField(L('blk_current', 'current'))
+			.appendField(L('blk_current1', 'current1'))
 			.appendField(new Blockly.FieldDropdown([[L('blk_x', 'x'), "X"], [L('blk_y', 'y'), "Y"], [L('blk_z', 'z'), "Z"], [L('blk_vx', 'vx'), "VX"], [L('blk_vy', 'vy'), "VY"], [L('blk_vz', 'vz'), "VZ"]]), "FIELD")
 			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(frameIdsWithTerrain), "FRAME_ID");
@@ -261,7 +264,7 @@ Blockly.Blocks['get_yaw'] = {
 Blockly.Blocks['get_attitude'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField(L('blk_current', 'current'))
+			.appendField(L('blk_current1', 'current1'))
 			.appendField(new Blockly.FieldDropdown([[L('blk_roll', 'roll'), "ROLL"], [L('blk_pitch', 'pitch'), "PITCH"], [L('blk_roll_rate', 'roll rate'), "ROLL_RATE"], [L('blk_pitch_rate', 'pitch rate'), "PITCH_RATE"], [L('blk_yaw_rate', 'yaw rate'), "YAW_RATE"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
@@ -273,7 +276,7 @@ Blockly.Blocks['get_attitude'] = {
 Blockly.Blocks['voltage'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField(L('blk_current', 'current'))
+			.appendField(L('blk_current3', 'current3'))
 			.appendField(new Blockly.FieldDropdown([[L('blk_total', 'total'), "VOLTAGE"], [L('blk_cell', 'cell'), "CELL_VOLTAGE"]]), "TYPE")
 			.appendField(L('blk_voltage', 'voltage'));
 		this.setOutput(true, "Number");
@@ -446,7 +449,7 @@ Blockly.Blocks['land'] = {
 Blockly.Blocks['global_position'] = {
 	init: function () {
 		this.appendDummyInput()
-			.appendField(L('blk_current', 'current'))
+			.appendField(L('blk_current2', 'current2'))
 			.appendField(new Blockly.FieldDropdown([[L('blk_latitude', 'latitude'), "LAT"], [L('blk_longitude', 'longitude'), "LON"], [L('blk_altitude', 'altitude'), "ALT"]]), "FIELD");
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
@@ -529,6 +532,7 @@ Blockly.Blocks['distance'] = {
 		this.appendValueInput("X")
 			.setCheck("Number")
 			.appendField(L('blk_x', 'x'));
+			// .appendField(L('blk_forward', 'forward'));
 		this.appendValueInput("Y")
 			.setCheck("Number")
 			.appendField(L('blk_y', 'y'));
