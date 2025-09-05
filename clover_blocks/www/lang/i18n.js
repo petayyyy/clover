@@ -459,6 +459,89 @@ class I18n {
             }
         });
     }
+
+    // ---------- Localized modal dialogs ----------
+    // Simple modal factory used by alert/confirm/prompt
+    createModal({ title = location.hostname || 'dialog', message = '', withInput = false, okText, cancelText }) {
+        const overlay = document.createElement('div');
+        const modal = document.createElement('div');
+        const header = document.createElement('div');
+        const body = document.createElement('div');
+        const footer = document.createElement('div');
+        const titleElem = document.createElement('div');
+        const msgElem = document.createElement('div');
+        const okBtn = document.createElement('button');
+        const cancelBtn = document.createElement('button');
+
+        // Basic styles (inline to avoid CSS dependency)
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        modal.style.cssText = 'min-width:300px;max-width:520px;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;';
+        header.style.cssText = 'padding:12px 16px;border-bottom:1px solid #eee;font-weight:600;display:flex;align-items:center;gap:8px;color:#222;';
+        body.style.cssText = 'padding:16px;color:#222;line-height:1.4;';
+        footer.style.cssText = 'padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;background:#f7f7f7;border-top:1px solid #eee;';
+        cancelBtn.style.cssText = 'padding:8px 12px;border-radius:6px;border:1px solid #d0d7de;background:#fff;color:#24292f;cursor:pointer;';
+        okBtn.style.cssText = 'padding:8px 12px;border-radius:6px;border:1px solid #1b74e4;background:#1b74e4;color:#fff;cursor:pointer;';
+        titleElem.textContent = title;
+        msgElem.textContent = message;
+        okBtn.textContent = okText ?? this.t('ok');
+        cancelBtn.textContent = cancelText ?? this.t('cancel');
+
+        header.appendChild(titleElem);
+        body.appendChild(msgElem);
+
+        let inputElem = null;
+        if (withInput) {
+            inputElem = document.createElement('input');
+            inputElem.type = 'text';
+            inputElem.style.cssText = 'margin-top:12px;width:100%;padding:8px;border:1px solid #d0d7de;border-radius:6px;';
+            body.appendChild(inputElem);
+        }
+
+        footer.appendChild(cancelBtn);
+        footer.appendChild(okBtn);
+        modal.appendChild(header);
+        modal.appendChild(body);
+        modal.appendChild(footer);
+        overlay.appendChild(modal);
+
+        const remove = () => overlay.remove();
+        const trap = (e) => { if (e.key === 'Escape') { e.preventDefault(); cancelBtn.click(); } };
+
+        return { overlay, okBtn, cancelBtn, remove, inputElem, trap };
+    }
+
+    alert(message) {
+        return new Promise(resolve => {
+            const { overlay, okBtn, remove, trap } = this.createModal({ message, okText: this.t('ok') });
+            okBtn.addEventListener('click', () => { remove(); resolve(); });
+            document.addEventListener('keydown', trap, { once: true });
+            document.body.appendChild(overlay);
+            okBtn.focus();
+        });
+    }
+
+    confirm(message) {
+        return new Promise(resolve => {
+            const { overlay, okBtn, cancelBtn, remove, trap } = this.createModal({ message, okText: this.t('ok'), cancelText: this.t('cancel') });
+            okBtn.addEventListener('click', () => { remove(); resolve(true); });
+            cancelBtn.addEventListener('click', () => { remove(); resolve(false); });
+            document.addEventListener('keydown', trap, { once: true });
+            document.body.appendChild(overlay);
+            okBtn.focus();
+        });
+    }
+
+    prompt(message, defaultValue = '') {
+        return new Promise(resolve => {
+            const { overlay, okBtn, cancelBtn, remove, inputElem, trap } = this.createModal({ message, withInput: true, okText: this.t('ok'), cancelText: this.t('cancel') });
+            if (inputElem) inputElem.value = defaultValue || '';
+            okBtn.addEventListener('click', () => { const val = inputElem ? inputElem.value : ''; remove(); resolve(val); });
+            cancelBtn.addEventListener('click', () => { remove(); resolve(null); });
+            document.addEventListener('keydown', trap, { once: true });
+            document.body.appendChild(overlay);
+            (inputElem || okBtn).focus();
+        });
+    }
 }
 
 // Create global i18n instance

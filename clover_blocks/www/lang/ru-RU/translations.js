@@ -35,6 +35,9 @@ const ruRu = {
         'clear_workspace_confirm': 'Очистить рабочее пространство?', 
         'discard_changes_confirm': 'Отменить изменения?', 
         'enter_program_name': 'Введите новое название программы:', 
+        // Dialog buttons
+        'ok': 'ОК',
+        'cancel': 'Отмена',
         
         // Error messages
         'error_prefix': 'Ошибка: ', 
@@ -97,9 +100,9 @@ const ruRu = {
         velocity: 'скорость',
         attitude: 'ориентация',
         angular_rates: 'угловые скорости',
-        vx: 'vx',
-        vy: 'vy',
-        vz: 'vz',
+        vx: 'горизонтальная скорость(vx)',
+        vy: 'вертикальная скорость(vy)',
+        vz: 'глубинная скорость(vz)',
         roll: 'крен',
         pitch: 'тангаж',
         yaw: 'рыскание',

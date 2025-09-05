@@ -34,6 +34,9 @@ const enUs = {
         'clear_workspace_confirm': 'Clear workspace?',
         'discard_changes_confirm': 'Discard changes?',
         'enter_program_name': 'Enter new program name:',
+        // Dialog buttons
+        'ok': 'OK',
+        'cancel': 'Cancel',
         
         // Error messages
         'error_prefix': 'Error: ',

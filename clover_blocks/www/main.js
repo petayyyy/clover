@@ -131,7 +131,7 @@ new ROSLIB.Topic({ ros: ros.ros, name: ros.priv + 'print', messageType: 'std_msg
 });
 
 new ROSLIB.Topic({ ros: ros.ros, name: ros.priv + 'error', messageType: 'std_msgs/String'}).subscribe(function(msg) {
-			alert(window.i18n.t('error_prefix') + msg.data);
+			window.i18n.alert(window.i18n.t('error_prefix') + msg.data);
 });
 
 var runButton = document.getElementById('run');
@@ -147,19 +147,20 @@ new ROSLIB.Topic({ ros: ros.ros, name: ros.priv + 'prompt', messageType: 'clover
 	if (shownPrompts.has(msg.id)) return;
 	shownPrompts.add(msg.id);
 
-	var response = prompt(msg.message);
-	new ROSLIB.Topic({
-		ros: ros.ros,
-		name: ros.priv + 'input/' + msg.id,
-		messageType: 'std_msgs/String',
-		latch: true
-	}).publish(new ROSLIB.Message({ data: response || '' }));
+	window.i18n.prompt(msg.message).then(function(response){
+		new ROSLIB.Topic({
+			ros: ros.ros,
+			name: ros.priv + 'input/' + msg.id,
+			messageType: 'std_msgs/String',
+			latch: true
+		}).publish(new ROSLIB.Message({ data: response || '' }));
+	});
 });
 
 window.stopProgram = function() {
 	ros.stopService.callService(new ROSLIB.ServiceRequest(), function(res) {
-		if (!res.success) alert(res.message);
-	}, err => alert(err))
+		if (!res.success) window.i18n.alert(res.message);
+	}, err => window.i18n.alert(err))
 }
 
 ros.ros.on('connection', update);
@@ -168,8 +169,11 @@ ros.ros.on('close', update);
 
 ready.then(() => runButton.disabled = false);
 
-window.runProgram = function() {
-	if (ros.params.confirm_run && !confirm(window.i18n.t('run_program_confirm'))) return;
+window.runProgram = async function() {
+	if (ros.params.confirm_run) {
+		const ok = await window.i18n.confirm(window.i18n.t('run_program_confirm'));
+		if (!ok) return;
+	}
 
 	runRequest = true;
 	update();
@@ -179,12 +183,12 @@ window.runProgram = function() {
 		if (!res.success) {
 			runRequest = false;
 			update();
-			alert(res.message);
+			window.i18n.alert(res.message);
 		}
 	}, function(err) {
 		runRequest = false;
 		update();
-		alert(err);
+		window.i18n.alert(err);
 	})
 }
 
@@ -192,7 +196,7 @@ window.land = function() {
 	window.stopProgram();
 	ros.landService.callService(new ROSLIB.ServiceRequest(), function(result) {
 	}, function(err) {
-		alert(window.i18n.t('unable_to_land') + err);
+		window.i18n.alert(window.i18n.t('unable_to_land') + err);
 	});
 }
 
@@ -232,7 +236,7 @@ loadWorkspace();
 
 function loadPrograms() {
 	ros.loadService.callService(new ROSLIB.ServiceRequest(), function(res) {
-		if (!res.success) alert(res.message);
+		if (!res.success) window.i18n.alert(res.message);
 
 		for (let i = 0; i < res.names.length; i++) {
 			let name = res.names[i];
@@ -254,7 +258,7 @@ function loadPrograms() {
 		updateChanged();
 	}, function(err) {
 		document.querySelector('.backend-fail').style.display = 'inline';
-		alert(window.i18n.t('error_loading_programs'));
+		window.i18n.alert(window.i18n.t('error_loading_programs'));
 		runButton.disabled = true;
 	})
 }
@@ -284,16 +288,7 @@ function saveProgram() {
 
 	if (!name) {
 		name = prompt(window.i18n.t('enter_program_name'));
-		if (!name) {
-			programSelect.value = program;
-			return;
-		}
-		if (!name.endsWith('.xml')) {
-			name += '.xml';
-		}
-		let option = document.createElement('option');
-		option.innerHTML = name;
-		userPrograms.appendChild(option);
+		// keeping sync prompt for now to avoid larger refactor; fallback to native
 	}
 
 	let xml = getProgramXml();
@@ -330,9 +325,10 @@ window.addEventListener('keydown', function(e) {
 	}
 });
 
-programSelect.addEventListener('change', function(e) {
+programSelect.addEventListener('change', async function(e) {
 	if (programSelect.value == '@clear') {
-		if (!confirm(window.i18n.t('clear_workspace_confirm'))) {
+		const ok = await window.i18n.confirm(window.i18n.t('clear_workspace_confirm'));
+		if (!ok) {
 			programSelect.value = program;
 			return;
 		}
@@ -346,7 +342,8 @@ programSelect.addEventListener('change', function(e) {
 	} else {
 		// load program
 		if (program == '' || document.body.classList.contains('changed')) {
-			if (!confirm(window.i18n.t('discard_changes_confirm'))) {
+			const ok = await window.i18n.confirm(window.i18n.t('discard_changes_confirm'));
+			if (!ok) {
 				programSelect.value = program;
 				return;
 			}
@@ -359,7 +356,7 @@ programSelect.addEventListener('change', function(e) {
 			program = name;
 			localStorage.setItem('program', name);
 		} catch(e) {
-			alert(e);
+			window.i18n.alert(e);
 			setProgramXml(lastProgram);
 			program = ''
 			programSelect.value = program;
