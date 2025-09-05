@@ -158,7 +158,9 @@ const enUs = {
         to_pwm: 'to PWM',
         to_duty_cycle: 'to duty cycle',
         scan_qr_data: 'scan QR data',
-        timeout_s: 'timeout, s',
+        scan_qr_list_data: 'scan list QR data',
+
+        doc_url: 'https://clover.coex.tech/en/blocks.html',
 
         // Tooltips
         tooltip_navigate: 'Navigate to the specified point, coordinates are in meters.',
@@ -186,7 +188,8 @@ const enUs = {
         tooltip_gpio_write: 'Set GPIO pin level.',
         tooltip_set_servo: 'Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.',
         tooltip_set_duty_cycle: 'Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.',
-        tooltip_scan_qr: 'Returns data from the first detected QR code within timeout.'
+        tooltip_scan_qr: 'Returns data from the first detected QR code within timeout.',
+        tooltip_scan_qr_list: 'Returns data from the list detected QR codes within timeout.'
     }
 };
 

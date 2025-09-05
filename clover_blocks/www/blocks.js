@@ -12,7 +12,7 @@ const COLOR_FLIGHT = 293;
 const COLOR_STATE = 36;
 const COLOR_LED = 143;
 const COLOR_GPIO = 200;
-const DOCS_URL = 'https://clover.coex.tech/en/blocks.html';
+const COLOR_NEW = 184;
 
 // Localization helper: tries i18n, then Blockly.Msg, then fallback
 function L(key, fallback) {
@@ -115,9 +115,6 @@ Blockly.Blocks['navigate'] = {
 			.setCheck("Number")
 			.appendField(L('blk_longitude', 'longitude'))
 			.setVisible(false)
-		// this.appendValueInput("Z")
-		// 	.setCheck("Number")
-		// 	.appendField(L('blk_up', 'up'));
 		this.appendDummyInput()
 			.appendField(L('blk_relative_to', 'relative to'))
 			.appendField(new Blockly.FieldDropdown(navFrameId), "FRAME_ID");
@@ -136,7 +133,7 @@ Blockly.Blocks['navigate'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_navigate', 'Navigate to the specified point, coordinates are in meters.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
 };
@@ -166,7 +163,7 @@ Blockly.Blocks['set_velocity'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_set_velocity', "Set the drone velocity in meters per second (cancels navigation requests)."));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
 };
@@ -214,7 +211,7 @@ Blockly.Blocks['setpoint'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_setpoint', "Set the drone's setpoints of different types (cancels navigation requests)."));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(updateSetpointBlock);
 	}
 };
@@ -226,7 +223,7 @@ Blockly.Blocks['rangefinder_distance'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -244,7 +241,7 @@ Blockly.Blocks['get_position'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_get_position', 'Returns current position or velocity in meters or meters per second.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
 };
@@ -261,7 +258,7 @@ Blockly.Blocks['get_yaw'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_get_yaw', 'Returns current yaw in degree (not radian).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
 };
@@ -274,7 +271,7 @@ Blockly.Blocks['get_attitude'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_get_attitude', 'Returns current orientation or angle rates in degree or degree per second (not radian).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -287,7 +284,7 @@ Blockly.Blocks['voltage'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_voltage', 'Returns current battery voltage in volts.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -301,7 +298,7 @@ Blockly.Blocks['get_rc'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_get_rc', 'Returns current RC channel value.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 }
 
@@ -312,7 +309,7 @@ Blockly.Blocks['armed'] = {
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_armed', 'Returns if the drone armed.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -324,7 +321,7 @@ Blockly.Blocks['mode'] = {
 		this.setOutput(true, "String");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_mode', 'Returns current flight mode (POSCTL, OFFBOARD, etc).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -337,7 +334,7 @@ Blockly.Blocks['wait_arrival'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_wait_arrival', 'Wait until the drone arrives to the navigation target.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -348,7 +345,7 @@ Blockly.Blocks['get_time'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_get_time', 'Returns current timestamp in seconds.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -359,7 +356,7 @@ Blockly.Blocks['arrived'] = {
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_arrived', 'Returns if the drone arrived to the navigation target.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -377,7 +374,7 @@ Blockly.Blocks['set_led'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_LED);
 		this.setTooltip(L('blk_tooltip_set_led', 'Set an individual LED to specified color.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -394,7 +391,7 @@ Blockly.Blocks['set_effect'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_LED);
 		this.setTooltip(L('blk_tooltip_set_effect', 'Set desired LED strip effect.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 
 		this.setOnChange(function(e) {
 			if (!(e instanceof Blockly.Events.Change || e instanceof Blockly.Events.Create)) return;
@@ -415,7 +412,7 @@ Blockly.Blocks['led_count'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_LED);
 		this.setTooltip(L('blk_tooltip_led_count', 'Returns the number of LEDs (configured in led.launch).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -431,7 +428,7 @@ Blockly.Blocks['take_off'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_take_off', 'Take off on desired altitude in meters.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -447,7 +444,7 @@ Blockly.Blocks['land'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_land', 'Land the drone.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -459,7 +456,7 @@ Blockly.Blocks['global_position'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_global_position', 'Returns current global position (latitude, longitude, altitude above the WGS 84 ellipsoid).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -470,7 +467,7 @@ Blockly.Blocks['on_take_off'] = {
 			.appendField(L('blk_when_took_off', 'When took off'));
 		this.setColour(230);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -481,7 +478,7 @@ Blockly.Blocks['on_landing'] = {
 			.appendField(L('blk_when_landed', 'When landed'));
 		this.setColour(230);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -492,7 +489,7 @@ Blockly.Blocks['on_armed'] = {
 			.appendField(L('blk_when_armed', 'when armed'));
 		this.setColour(230);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -506,7 +503,7 @@ Blockly.Blocks['angle'] = {
 		this.setOutput(true, "Number");
 		this.setColour(230);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -526,7 +523,7 @@ Blockly.Blocks['set_yaw'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip(L('blk_tooltip_set_yaw', 'Rotate the drone to the specified angle in degree (not radian).'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -555,7 +552,7 @@ Blockly.Blocks['distance'] = {
 		this.setOutput(true, "Number");
 		this.setColour(COLOR_STATE);
 		this.setTooltip(L('blk_tooltip_distance', 'Returns the distance to the given point in meters.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 		this.setOnChange(considerFrameId);
 	}
 };
@@ -572,7 +569,7 @@ Blockly.Blocks['wait'] = {
 		this.setNextStatement(true, null);
 		this.setColour(COLOR_FLIGHT);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -590,7 +587,7 @@ Blockly.Blocks['key_pressed'] = {
 		this.setNextStatement(true, null);
 		this.setColour(230);
 		this.setTooltip("");
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
 
@@ -602,7 +599,7 @@ Blockly.Blocks['gpio_read'] = {
 		this.setOutput(true, "Boolean");
 		this.setColour(COLOR_GPIO);
 		this.setTooltip(L('blk_tooltip_gpio_read', 'Returns if there is voltage on a GPIO pin.'));
-		this.setHelpUrl(DOCS_URL + '#GPIO');
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#GPIO');
 	}
 };
 
@@ -619,7 +616,7 @@ Blockly.Blocks['gpio_write'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setTooltip(L('blk_tooltip_gpio_write', 'Set GPIO pin level.'));
-		this.setHelpUrl(DOCS_URL + '#GPIO');
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#GPIO');
 	}
 };
 
@@ -636,7 +633,7 @@ Blockly.Blocks['set_servo'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setTooltip(L('blk_tooltip_set_servo', 'Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.'));
-		this.setHelpUrl(DOCS_URL + '#GPIO');
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#GPIO');
 	}
 };
 
@@ -653,10 +650,12 @@ Blockly.Blocks['set_duty_cycle'] = {
 		this.setPreviousStatement(true, null);
 		this.setNextStatement(true, null);
 		this.setTooltip(L('blk_tooltip_set_duty_cycle', 'Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.'));
-		this.setHelpUrl(DOCS_URL + '#GPIO');
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#GPIO');
 	}
 };
 
+////////////////////////////////////////////////////////////////////////////////////
+//  NEW BLOCK
 // QR scan block
 Blockly.Blocks['scan_qr'] = {
 	init: function () {
@@ -664,11 +663,29 @@ Blockly.Blocks['scan_qr'] = {
 			.appendField(L('blk_scan_qr_data', 'scan QR data'));
 		this.appendValueInput("TIMEOUT")
 			.setCheck("Number")
-			.appendField(L('blk_timeout_s', 'timeout, s'));
+		this.appendDummyInput()
+			.appendField(L('blk_seconds', 'seconds'));
 		this.setInputsInline(true);
 		this.setOutput(true, "String");
-		this.setColour(COLOR_STATE);
+		this.setColour(COLOR_NEW);
 		this.setTooltip(L('blk_tooltip_scan_qr', 'Returns data from the first detected QR code within timeout.'));
-		this.setHelpUrl(DOCS_URL + '#' + this.type);
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
+	}
+};
+
+// QR list scan block
+Blockly.Blocks['scan_qr_list'] = {
+	init: function () {
+		this.appendDummyInput()
+			.appendField(L('blk_scan_qr_list_data', 'scan list QR data'));
+		this.appendValueInput("TIMEOUT")
+			.setCheck("Number")
+		this.appendDummyInput()
+			.appendField(L('blk_seconds', 'seconds'));
+		this.setInputsInline(true);
+		this.setOutput(true, "Array");
+		this.setColour(COLOR_NEW);
+		this.setTooltip(L('blk_tooltip_scan_qr_list', 'Returns data from the list detected QR codes within timeout.'));
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };
