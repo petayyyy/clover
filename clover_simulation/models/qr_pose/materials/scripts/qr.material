@@ -1,0 +1,15 @@
+material qr/pose
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture x0_y1_fly.png
+                filtering none
+                scale 1.0 1.0
+            }
+        }
+    }
+}
