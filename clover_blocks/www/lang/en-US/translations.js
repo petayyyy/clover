@@ -165,6 +165,13 @@ const enUs = {
         main_camera: 'main camera',
         optical_flow: 'optical flow',
         aruco: 'aruco',
+        main_camera_raw: 'main camera (raw)',
+        main_camera_throttled: 'main camera (throttled)',
+        optical_flow_debug: 'optical flow (debug)',
+        optical_flow_image: 'optical flow (image)',
+        aruco_detect_debug: 'aruco detect (debug)',
+        aruco_map_debug: 'aruco map (debug)',
+        aruco_map_image: 'aruco map (image)',
 
         doc_url: 'https://clover.coex.tech/en/blocks.html',
 

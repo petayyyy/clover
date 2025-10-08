@@ -167,6 +167,13 @@ const ruRu = {
         main_camera: 'основная камера',
         optical_flow: 'оптический поток',
         aruco: 'aruco',
+        main_camera_raw: 'основная камера (raw)',
+        main_camera_throttled: 'основная камера (throttled)',
+        optical_flow_debug: 'оптический поток (debug)',
+        optical_flow_image: 'оптический поток (image)',
+        aruco_detect_debug: 'aruco detect (debug)',
+        aruco_map_debug: 'aruco map (debug)',
+        aruco_map_image: 'aruco map (image)',
 
         doc_url: 'https://clover.coex.tech/ru/blocks.html',
 

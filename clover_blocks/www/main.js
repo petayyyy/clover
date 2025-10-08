@@ -42,25 +42,43 @@ async function getImageTopicsFromROS() {
                 if (topicType === 'sensor_msgs/Image' || topicType === 'sensor_msgs/CompressedImage') {
                     // Create a friendly name for the topic
                     let friendlyName = topicName;
-                    if (topicName.includes('main_camera')) {
-                        friendlyName = 'main camera';
-                    } else if (topicName.includes('optical_flow')) {
-                        friendlyName = 'optical flow';
-                    } else if (topicName.includes('aruco')) {
+                    
+                    // Remove leading slash if present
+                    const cleanTopicName = topicName.startsWith('/') ? topicName.substring(1) : topicName;
+                    
+                    // Create more descriptive friendly names
+                    if (cleanTopicName.includes('main_camera/image_raw')) {
+                        friendlyName = 'main camera (raw)';
+                    } else if (cleanTopicName.includes('main_camera/image_raw_throttled')) {
+                        friendlyName = 'main camera (throttled)';
+                    } else if (cleanTopicName.includes('optical_flow/debug')) {
+                        friendlyName = 'optical flow (debug)';
+                    } else if (cleanTopicName.includes('optical_flow/image')) {
+                        friendlyName = 'optical flow (image)';
+                    } else if (cleanTopicName.includes('aruco_detect/debug')) {
+                        friendlyName = 'aruco detect (debug)';
+                    } else if (cleanTopicName.includes('aruco_map/debug')) {
+                        friendlyName = 'aruco map (debug)';
+                    } else if (cleanTopicName.includes('aruco_map/image')) {
+                        friendlyName = 'aruco map (image)';
+                    } else if (cleanTopicName.includes('aruco')) {
                         friendlyName = 'aruco';
-                    } else if (topicName.includes('camera')) {
+                    } else if (cleanTopicName.includes('camera')) {
                         friendlyName = 'camera';
-                    } else if (topicName.includes('image')) {
+                    } else if (cleanTopicName.includes('image')) {
                         friendlyName = 'image';
                     } else {
                         // Use the last part of the topic name as friendly name
-                        const parts = topicName.split('/');
+                        const parts = cleanTopicName.split('/');
                         friendlyName = parts[parts.length - 1].replace(/_/g, ' ');
                     }
                     
                     imageTopics.push([friendlyName, topicName]);
                 }
             }
+            
+            // Sort topics alphabetically by friendly name
+            imageTopics.sort((a, b) => a[0].localeCompare(b[0]));
             
             console.log('Found image topics:', imageTopics);
             
@@ -96,16 +114,41 @@ window.getImageTopicsFromROS = getImageTopicsFromROS;
 // Update image topics when ROS connects
 if (typeof window !== 'undefined') {
     window.addEventListener('load', async () => {
-        // Wait for ROS connection
+        console.log('Page loaded, starting topic update process...');
+        
+        // Try to update topics immediately
+        try {
+            if (window.updateImageTopics) {
+                await window.updateImageTopics();
+                console.log('Topics updated successfully');
+            }
+        } catch (e) {
+            console.warn('Initial topic update failed:', e);
+        }
+        
+        // Also try after a delay to catch ROS connection
         setTimeout(async () => {
             try {
                 if (window.updateImageTopics) {
                     await window.updateImageTopics();
+                    console.log('Delayed topic update completed');
                 }
             } catch (e) {
-                console.warn('Could not update image topics:', e);
+                console.warn('Delayed topic update failed:', e);
             }
-        }, 2000); // Wait 2 seconds for ROS to connect
+        }, 3000); // Wait 3 seconds for ROS to connect
+        
+        // Try again after longer delay
+        setTimeout(async () => {
+            try {
+                if (window.updateImageTopics) {
+                    await window.updateImageTopics();
+                    console.log('Final topic update completed');
+                }
+            } catch (e) {
+                console.warn('Final topic update failed:', e);
+            }
+        }, 8000); // Wait 8 seconds for full ROS initialization
     });
 }
 

@@ -38,6 +38,12 @@ function getFrameIdsWithTerrain() {
 
 // Function to get image topics dynamically
 function getImageTopics() {
+	// Check if we have cached topics
+	if (typeof window !== 'undefined' && window.imageTopicsCache) {
+		console.log('Using cached image topics');
+		return window.imageTopicsCache;
+	}
+	
 	// Default topics
 	const defaultTopics = [
 		[L('blk_main_camera', 'main camera'), 'main_camera/image_raw'],
@@ -45,8 +51,7 @@ function getImageTopics() {
 		[L('blk_aruco', 'aruco'), 'aruco/image_raw']
 	];
 	
-	// For now, return default topics
-	// Dynamic topic loading would require more complex Blockly integration
+	console.log('Using default image topics');
 	return defaultTopics;
 }
 
@@ -54,28 +59,50 @@ function getImageTopics() {
 async function updateImageTopics() {
 	if (typeof window !== 'undefined' && window.getImageTopicsFromROS) {
 		try {
+			console.log('Updating image topics...');
 			const topics = await window.getImageTopicsFromROS();
+			console.log('Retrieved topics:', topics);
+			
 			// Convert to localized format
 			const localizedTopics = topics.map(([name, topic]) => [
-				L('blk_' + name.replace(/\s+/g, '_'), name), 
+				L('blk_' + name.replace(/\s+/g, '_').replace(/[()]/g, ''), name), 
 				topic
 			]);
+			
+			console.log('Localized topics:', localizedTopics);
 			
 			// Update all dropdown fields in the workspace
 			if (window.workspace) {
 				const blocks = window.workspace.getAllBlocks();
+				let updatedBlocks = 0;
+				
 				blocks.forEach(block => {
 					if (block.type === 'scan_qr' || block.type === 'scan_qr_list') {
 						const topicField = block.getField('TOPIC');
 						if (topicField) {
+							// Update the dropdown options
 							topicField.menuGenerator_ = function() {
 								return localizedTopics;
 							};
+							
+							// If current value is not in new list, set to first available
+							const currentValue = topicField.getValue();
+							const hasCurrentValue = localizedTopics.some(([_, topic]) => topic === currentValue);
+							if (!hasCurrentValue && localizedTopics.length > 0) {
+								topicField.setValue(localizedTopics[0][1]);
+							}
+							
 							block.render();
+							updatedBlocks++;
 						}
 					}
 				});
+				
+				console.log(`Updated ${updatedBlocks} blocks with new topics`);
 			}
+			
+			// Also update the default topics for new blocks
+			window.imageTopicsCache = localizedTopics;
 			
 			return localizedTopics;
 		} catch (e) {
