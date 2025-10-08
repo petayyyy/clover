@@ -536,10 +536,10 @@ Blockly.Python.set_duty_cycle = function(block) {
 // QR scan helper and generator
 const SCAN_QR_HELPERS = () => `from pyzbar import pyzbar
 
-def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(timeout):
+def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(timeout, topic):
     t0 = rospy.get_time()
     while not rospy.is_shutdown() and rospy.get_time() - t0 <= timeout:
-        img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
+        img = bridge.imgmsg_to_cv2(rospy.wait_for_message(topic, Image), 'bgr8')
         barcodes = pyzbar.decode(img)
         if len(barcodes) != 0:
             return barcodes[0].data.decode('utf-8')
@@ -550,18 +550,19 @@ Blockly.Python.scan_qr = function(block) {
     initNode();
 	initImageBridge();
     let timeout = Blockly.Python.valueToCode(block, 'TIMEOUT', Blockly.Python.ORDER_NONE) || '10';
+    let topic = block.getFieldValue('TOPIC') || 'main_camera/image_raw';
     let fn = Blockly.Python.provideFunction_('scan_qr_data', [SCAN_QR_HELPERS()]);
-    return [`${fn}(${timeout})`, Blockly.Python.ORDER_FUNCTION_CALL];
+    return [`${fn}(${timeout}, '${topic}')`, Blockly.Python.ORDER_FUNCTION_CALL];
 }
 
 // QR scan helper and generator
 const SCAN_QR_LIST_HELPERS = () => `from pyzbar import pyzbar
 
-def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(timeout):
+def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(timeout, topic):
     t0 = rospy.get_time()
     list_qr = []
     while not rospy.is_shutdown() and rospy.get_time() - t0 <= timeout:
-        img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
+        img = bridge.imgmsg_to_cv2(rospy.wait_for_message(topic, Image), 'bgr8')
         barcodes = pyzbar.decode(img)
         if len(barcodes) != 0:
             for i in range(len(barcodes)):
@@ -574,6 +575,37 @@ Blockly.Python.scan_qr_list = function(block) {
     initNode();
 	initImageBridge();
     let timeout = Blockly.Python.valueToCode(block, 'TIMEOUT', Blockly.Python.ORDER_NONE) || '10';
+    let topic = block.getFieldValue('TOPIC') || 'main_camera/image_raw';
     let fn = Blockly.Python.provideFunction_('scan_qr_list_data', [SCAN_QR_LIST_HELPERS()]);
-    return [`${fn}(${timeout})`, Blockly.Python.ORDER_FUNCTION_CALL];
+    return [`${fn}(${timeout}, '${topic}')`, Blockly.Python.ORDER_FUNCTION_CALL];
+}
+
+// QR to position converter helper and generator
+const QR_TO_POSITION_HELPERS = () => `def ${Blockly.Python.FUNCTION_NAME_PLACEHOLDER_}(qr_data, coordinate):
+    try:
+        # Parse QR data - expected format: "x,y,z" or "x,y"
+        coords = qr_data.strip().split(',')
+        if len(coords) < 2:
+            return 0.0
+        
+        x = float(coords[0].strip())
+        y = float(coords[1].strip())
+        z = float(coords[2].strip()) if len(coords) > 2 else 0.0
+        
+        if coordinate == 'X':
+            return x
+        elif coordinate == 'Y':
+            return y
+        elif coordinate == 'Z':
+            return z
+        else:
+            return 0.0
+    except (ValueError, IndexError):
+        return 0.0`;
+
+Blockly.Python.qr_to_position = function(block) {
+    let qrData = Blockly.Python.valueToCode(block, 'QR_DATA', Blockly.Python.ORDER_NONE) || "''";
+    let coordinate = block.getFieldValue('COORDINATE');
+    let fn = Blockly.Python.provideFunction_('qr_to_position', [QR_TO_POSITION_HELPERS()]);
+    return [`${fn}(${qrData}, '${coordinate}')`, Blockly.Python.ORDER_FUNCTION_CALL];
 }

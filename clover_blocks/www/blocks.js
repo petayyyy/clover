@@ -36,6 +36,61 @@ function getFrameIdsWithTerrain() {
 	return getFrameIds().concat([[L('blk_terrain', 'terrain'), "TERRAIN"]]);
 }
 
+// Function to get image topics dynamically
+function getImageTopics() {
+	// Default topics
+	const defaultTopics = [
+		[L('blk_main_camera', 'main camera'), 'main_camera/image_raw'],
+		[L('blk_optical_flow', 'optical flow'), 'optical_flow/image_raw'],
+		[L('blk_aruco', 'aruco'), 'aruco/image_raw']
+	];
+	
+	// For now, return default topics
+	// Dynamic topic loading would require more complex Blockly integration
+	return defaultTopics;
+}
+
+// Function to update image topics dynamically
+async function updateImageTopics() {
+	if (typeof window !== 'undefined' && window.getImageTopicsFromROS) {
+		try {
+			const topics = await window.getImageTopicsFromROS();
+			// Convert to localized format
+			const localizedTopics = topics.map(([name, topic]) => [
+				L('blk_' + name.replace(/\s+/g, '_'), name), 
+				topic
+			]);
+			
+			// Update all dropdown fields in the workspace
+			if (window.workspace) {
+				const blocks = window.workspace.getAllBlocks();
+				blocks.forEach(block => {
+					if (block.type === 'scan_qr' || block.type === 'scan_qr_list') {
+						const topicField = block.getField('TOPIC');
+						if (topicField) {
+							topicField.menuGenerator_ = function() {
+								return localizedTopics;
+							};
+							block.render();
+						}
+					}
+				});
+			}
+			
+			return localizedTopics;
+		} catch (e) {
+			console.warn('Could not fetch image topics from ROS:', e);
+		}
+	}
+	
+	return getImageTopics();
+}
+
+// Make function available globally
+if (typeof window !== 'undefined') {
+	window.updateImageTopics = updateImageTopics;
+}
+
 function considerFrameId(e) {
 	if (!(e instanceof Blockly.Events.Change || e instanceof Blockly.Events.Create)) return;
 
@@ -665,7 +720,10 @@ Blockly.Blocks['scan_qr'] = {
 			.setCheck("Number")
 		this.appendDummyInput()
 			.appendField(L('blk_seconds', 'seconds'));
-		this.setInputsInline(true);
+		this.appendDummyInput()
+			.appendField(L('blk_from_topic', 'from topic'))
+			.appendField(new Blockly.FieldDropdown(getImageTopics), "TOPIC");
+		this.setInputsInline(false);
 		this.setOutput(true, "String");
 		this.setColour(COLOR_NEW);
 		this.setTooltip(L('blk_tooltip_scan_qr', 'Returns data from the first detected QR code within timeout.'));
@@ -682,10 +740,30 @@ Blockly.Blocks['scan_qr_list'] = {
 			.setCheck("Number")
 		this.appendDummyInput()
 			.appendField(L('blk_seconds', 'seconds'));
-		this.setInputsInline(true);
+		this.appendDummyInput()
+			.appendField(L('blk_from_topic', 'from topic'))
+			.appendField(new Blockly.FieldDropdown(getImageTopics), "TOPIC");
+		this.setInputsInline(false);
 		this.setOutput(true, "Array");
 		this.setColour(COLOR_NEW);
 		this.setTooltip(L('blk_tooltip_scan_qr_list', 'Returns data from the list detected QR codes within timeout.'));
+		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
+	}
+};
+
+// QR to position converter block
+Blockly.Blocks['qr_to_position'] = {
+	init: function () {
+		this.appendValueInput("QR_DATA")
+			.setCheck("String")
+			.appendField(L('blk_qr_to_position', 'convert QR data to position'));
+		this.appendDummyInput()
+			.appendField(L('blk_extract', 'extract'))
+			.appendField(new Blockly.FieldDropdown([[L('blk_x', 'x'), "X"], [L('blk_y', 'y'), "Y"], [L('blk_z', 'z'), "Z"]]), "COORDINATE");
+		this.setInputsInline(false);
+		this.setOutput(true, "Number");
+		this.setColour(COLOR_NEW);
+		this.setTooltip(L('blk_tooltip_qr_to_position', 'Converts QR code data to flight position coordinates. QR data should contain coordinates in format "x,y,z" or "x,y".'));
 		this.setHelpUrl(L('blk_doc_url', 'https://clover.coex.tech/en/blocks.html') + '#' + this.type);
 	}
 };

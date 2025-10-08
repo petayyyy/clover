@@ -12,6 +12,103 @@ import * as ros from './ros.js';
 import './blocks.js';
 import {generateCode, generateUserCode} from './python.js';
 
+// Function to get image topics from ROS
+async function getImageTopicsFromROS() {
+    try {
+        if (window.ros && window.ros.ros && window.ros.ros.isConnected) {
+            console.log('Fetching image topics from ROS...');
+            
+            // Get all topics from ROS with timeout
+            const topics = await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Timeout while fetching topics'));
+                }, 5000); // 5 second timeout
+                
+                window.ros.ros.getTopics((topics) => {
+                    clearTimeout(timeout);
+                    resolve(topics);
+                }, (error) => {
+                    clearTimeout(timeout);
+                    reject(error);
+                });
+            });
+            
+            console.log('Received topics from ROS:', topics);
+            
+            // Filter topics that have Image type
+            const imageTopics = [];
+            for (const topicName in topics) {
+                const topicType = topics[topicName];
+                if (topicType === 'sensor_msgs/Image' || topicType === 'sensor_msgs/CompressedImage') {
+                    // Create a friendly name for the topic
+                    let friendlyName = topicName;
+                    if (topicName.includes('main_camera')) {
+                        friendlyName = 'main camera';
+                    } else if (topicName.includes('optical_flow')) {
+                        friendlyName = 'optical flow';
+                    } else if (topicName.includes('aruco')) {
+                        friendlyName = 'aruco';
+                    } else if (topicName.includes('camera')) {
+                        friendlyName = 'camera';
+                    } else if (topicName.includes('image')) {
+                        friendlyName = 'image';
+                    } else {
+                        // Use the last part of the topic name as friendly name
+                        const parts = topicName.split('/');
+                        friendlyName = parts[parts.length - 1].replace(/_/g, ' ');
+                    }
+                    
+                    imageTopics.push([friendlyName, topicName]);
+                }
+            }
+            
+            console.log('Found image topics:', imageTopics);
+            
+            // If no image topics found, return default topics
+            if (imageTopics.length === 0) {
+                console.log('No image topics found, using defaults');
+                return [
+                    ['main camera', 'main_camera/image_raw'],
+                    ['optical flow', 'optical_flow/image_raw'],
+                    ['aruco', 'aruco/image_raw']
+                ];
+            }
+            
+            return imageTopics;
+        } else {
+            console.log('ROS not connected, using default topics');
+        }
+    } catch (e) {
+        console.warn('Could not fetch image topics from ROS:', e);
+    }
+    
+    // Return default topics if ROS is not available or error occurred
+    return [
+        ['main camera', 'main_camera/image_raw'],
+        ['optical flow', 'optical_flow/image_raw'],
+        ['aruco', 'aruco/image_raw']
+    ];
+}
+
+// Make function available globally for blocks.js
+window.getImageTopicsFromROS = getImageTopicsFromROS;
+
+// Update image topics when ROS connects
+if (typeof window !== 'undefined') {
+    window.addEventListener('load', async () => {
+        // Wait for ROS connection
+        setTimeout(async () => {
+            try {
+                if (window.updateImageTopics) {
+                    await window.updateImageTopics();
+                }
+            } catch (e) {
+                console.warn('Could not update image topics:', e);
+            }
+        }, 2000); // Wait 2 seconds for ROS to connect
+    });
+}
+
 // Initialize i18n system
 async function initializeI18n() {
     try {

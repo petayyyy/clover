@@ -159,6 +159,12 @@ const enUs = {
         to_duty_cycle: 'to duty cycle',
         scan_qr_data: 'scan QR data',
         scan_qr_list_data: 'scan list QR data',
+        qr_to_position: 'convert QR data to position',
+        extract: 'extract',
+        from_topic: 'from topic',
+        main_camera: 'main camera',
+        optical_flow: 'optical flow',
+        aruco: 'aruco',
 
         doc_url: 'https://clover.coex.tech/en/blocks.html',
 
@@ -189,7 +195,8 @@ const enUs = {
         tooltip_set_servo: 'Set PWM on a GPIO pin to control servo. PWM is specified in range of 500–2500 μs.',
         tooltip_set_duty_cycle: 'Set PWM duty cycle on a GPIO pin (better to control LEDs, etc). Duty cycle is set in range of 0–1.',
         tooltip_scan_qr: 'Returns data from the first detected QR code within timeout.',
-        tooltip_scan_qr_list: 'Returns data from the list detected QR codes within timeout.'
+        tooltip_scan_qr_list: 'Returns data from the list detected QR codes within timeout.',
+        tooltip_qr_to_position: 'Converts QR code data to flight position coordinates. QR data should contain coordinates in format "x,y,z" or "x,y".'
     }
 };
 

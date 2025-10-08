@@ -113,9 +113,14 @@
 		<category name="NEW" colour="#5ba0a5">
 			<block type="scan_qr">
 				<value name="TIMEOUT"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
+				<field name="TOPIC">main_camera/image_raw</field>
 			</block>
 			<block type="scan_qr_list">
 				<value name="TIMEOUT"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
+				<field name="TOPIC">main_camera/image_raw</field>
+			</block>
+			<block type="qr_to_position">
+				<value name="QR_DATA"><shadow type="text"><field name="TEXT">1.5,2.0,1.0</field></shadow></value>
 			</block>
 		</category>
 		<category name="LED" colour="#02d754">
