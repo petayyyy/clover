@@ -10,176 +10,268 @@
  */
 
 #include <string>
-#include <ros/ros.h>
-#include <tf/transform_datatypes.h>
-#include <tf2/transform_datatypes.h>
+#include <memory>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2/utils.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <std_srvs/Trigger.h>
-// #include <aruco_pose/MarkerArray.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <std_srvs/srv/trigger.hpp>
 
 using std::string;
-using namespace geometry_msgs;
+using namespace geometry_msgs::msg;
+using std::placeholders::_1;
+using std::placeholders::_2;
 
-bool reset_flag = true; // offset should be reset on the start
-string local_frame_id, frame_id, child_frame_id, offset_frame_id;
-tf2_ros::Buffer tf_buffer;
-ros::Publisher vpe_pub;
-ros::Subscriber local_position_sub;
-ros::Timer zero_timer;
-PoseStamped vpe, pose;
-ros::Time got_local_pos(0);
-ros::Duration publish_zero_timeout, publish_zero_duration, offset_timeout;
-TransformStamped offset;
-
-void publishZero(const ros::TimerEvent& e)
+class VpePublisher : public rclcpp::Node
 {
-	if (!vpe.header.stamp.isZero() && e.current_real - vpe.header.stamp < publish_zero_timeout) return; // have vpe
+public:
+	VpePublisher() : Node("vpe_publisher")
+	{
+		// Initialize tf2
+		tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+		static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(*this);
 
-	if (!pose.header.stamp.isZero() && e.current_real - pose.header.stamp < publish_zero_timeout) { // have local position
-		if (got_local_pos.isZero()) {
-			ROS_INFO("got local position");
-			got_local_pos = e.current_real;
-		}
+		// Parameters
+		this->declare_parameter<string>("frame_id", ""); // name for used visual pose frame
+		this->declare_parameter<string>("offset_frame_id", ""); // name for published offset frame
+		this->declare_parameter<string>("local_frame_id", "map"); // mavros local_position frame_id
+		this->declare_parameter<string>("child_frame_id", "base_link"); // mavros local_position tf child_frame_id
+		this->declare_parameter<double>("offset_timeout", 3.0);
+		this->declare_parameter<bool>("force_init", false);
+		this->declare_parameter<bool>("publish_zero", false); // old name for force_init
+		this->declare_parameter<double>("force_init_timeout", 5.0);
+		this->declare_parameter<double>("force_init_duration", 5.0);
 
-		if (e.current_real - got_local_pos > publish_zero_duration) return; // stop publishing zero
-	} else {
-		// lost local position
-		got_local_pos = ros::Time(0);
-	}
+		frame_id_ = this->get_parameter("frame_id").as_string();
+		offset_frame_id_ = this->get_parameter("offset_frame_id").as_string();
+		local_frame_id_ = this->get_parameter("local_frame_id").as_string();
+		child_frame_id_ = this->get_parameter("child_frame_id").as_string();
+		offset_timeout_ = rclcpp::Duration::from_seconds(this->get_parameter("offset_timeout").as_double());
+		
+		bool force_init = this->get_parameter("force_init").as_bool() || 
+		                  this->get_parameter("publish_zero").as_bool();
+		double force_init_timeout = this->get_parameter("force_init_timeout").as_double();
+		double force_init_duration = this->get_parameter("force_init_duration").as_double();
+		
+		publish_zero_timeout_ = rclcpp::Duration::from_seconds(force_init_timeout);
+		publish_zero_duration_ = rclcpp::Duration::from_seconds(force_init_duration);
 
-	ROS_INFO_THROTTLE(10, "publish zero");
-	geometry_msgs::PoseStamped zero;
-	zero.header.frame_id = local_frame_id;
-	zero.header.stamp = e.current_real;
-	zero.pose.orientation.w = 1;
-	vpe_pub.publish(zero);
-}
-
-void localPositionCallback(const PoseStamped& msg) { pose = msg; }
-
-inline Pose getPose(const PoseStampedConstPtr& pose) { return pose->pose; }
-
-inline Pose getPose(const PoseWithCovarianceStampedConstPtr& pose) { return pose->pose.pose; }
-
-inline void keepYaw(Quaternion& quaternion)
-{
-	tf::Quaternion q;
-	q.setRPY(0, 0, tf::getYaw(quaternion));
-	tf::quaternionTFToMsg(q, quaternion);
-}
-
-template <typename T>
-void callback(const T& msg)
-{
-	static tf2_ros::StaticTransformBroadcaster br;
-
-	try {
-		if (!frame_id.empty()) {
-			// get VPE transform from TF
-			auto transform = tf_buffer.lookupTransform(frame_id, child_frame_id,
-													msg->header.stamp, ros::Duration(0.02));
-			vpe.pose.position.x = transform.transform.translation.x;
-			vpe.pose.position.y = transform.transform.translation.y;
-			vpe.pose.position.z = transform.transform.translation.z;
-			vpe.pose.orientation = transform.transform.rotation;
+		if (!frame_id_.empty()) {
+			RCLCPP_INFO(this->get_logger(), "using data from TF");
 		} else {
-			vpe.pose = getPose(msg);
+			RCLCPP_INFO(this->get_logger(), "using data topic");
 		}
 
-		// offset
-		if (!offset_frame_id.empty()) {
-			if (reset_flag || msg->header.stamp - vpe.header.stamp > offset_timeout) {
-				// calculate the offset
-				if (!frame_id.empty()) {
-					// calculate from TF
-					offset = tf_buffer.lookupTransform(local_frame_id, frame_id,
-					                                   msg->header.stamp, ros::Duration(0.02));
-					// offset.header.frame_id = vpe.header.frame_id;
-					offset.child_frame_id = offset_frame_id;
+		// Subscribers
+		pose_sub_ = this->create_subscription<PoseStamped>(
+			"pose", 1, std::bind(&VpePublisher::poseCallback, this, _1));
+		pose_cov_sub_ = this->create_subscription<PoseWithCovarianceStamped>(
+			"pose_cov", 1, std::bind(&VpePublisher::poseCovCallback, this, _1));
 
-				} else {
-					// calculate transform between pose in vpe frame and pose in local frame
-					TransformStamped local_pose = tf_buffer.lookupTransform(local_frame_id, child_frame_id,
-					                                                        msg->header.stamp, ros::Duration(0.02));
-					keepYaw(local_pose.transform.rotation);
+		// Publisher
+		vpe_pub_ = this->create_publisher<PoseStamped>("vpe", 1);
 
-					tf::Transform vpeTransform, poseTransform;
-					tf::poseMsgToTF(vpe.pose, vpeTransform);
-					tf::transformMsgToTF(local_pose.transform, poseTransform);
-					tf::Transform offset_tf = vpeTransform.inverseTimes(poseTransform);
-					tf::transformTFToMsg(offset_tf, offset.transform);
-					offset.header.frame_id = local_frame_id;
-					offset.header.stamp = msg->header.stamp;
-					offset.child_frame_id = offset_frame_id;
-				}
+		// Service
+		reset_service_ = this->create_service<std_srvs::srv::Trigger>(
+			"reset", std::bind(&VpePublisher::resetCallback, this, _1, _2));
 
-				br.sendTransform(offset);
-				reset_flag = false;
-				ROS_INFO("offset reset");
+		// Timer for publishing zero (if force_init is enabled)
+		if (force_init) {
+			// publish zero to initialize the local position
+			zero_timer_ = this->create_wall_timer(
+				std::chrono::milliseconds(100),
+				std::bind(&VpePublisher::publishZero, this));
+			local_position_sub_ = this->create_subscription<PoseStamped>(
+				"mavros/local_position/pose", 1,
+				std::bind(&VpePublisher::localPositionCallback, this, _1));
+		}
+
+		RCLCPP_INFO(this->get_logger(), "ready");
+	}
+
+private:
+	bool reset_flag_ = true; // offset should be reset on the start
+	string local_frame_id_, frame_id_, child_frame_id_, offset_frame_id_;
+	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+	std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_transform_broadcaster_;
+	
+	rclcpp::Publisher<PoseStamped>::SharedPtr vpe_pub_;
+	rclcpp::Subscription<PoseStamped>::SharedPtr local_position_sub_;
+	rclcpp::Subscription<PoseStamped>::SharedPtr pose_sub_;
+	rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr pose_cov_sub_;
+	rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
+	rclcpp::TimerBase::SharedPtr zero_timer_;
+	
+	PoseStamped vpe_, pose_;
+	rclcpp::Time got_local_pos_{0, 0, RCL_ROS_TIME};
+	rclcpp::Duration publish_zero_timeout_, publish_zero_duration_, offset_timeout_;
+	TransformStamped offset_;
+
+	void publishZero()
+	{
+		auto now = this->now();
+		
+		// Check if we have valid VPE
+		if (!(vpe_.header.stamp.sec == 0 && vpe_.header.stamp.nanosec == 0) && 
+		    (now - rclcpp::Time(vpe_.header.stamp)) < publish_zero_timeout_) {
+			return; // have vpe
+		}
+
+		// Check if we have local position
+		if (!(pose_.header.stamp.sec == 0 && pose_.header.stamp.nanosec == 0) && 
+		    (now - rclcpp::Time(pose_.header.stamp)) < publish_zero_timeout_) { // have local position
+			if (got_local_pos_.nanoseconds() == 0) {
+				RCLCPP_INFO(this->get_logger(), "got local position");
+				got_local_pos_ = now;
 			}
-			// apply the offset
-			tf2::doTransform(vpe, vpe, offset);
+
+			if ((now - got_local_pos_) > publish_zero_duration_) {
+				return; // stop publishing zero
+			}
+		} else {
+			// lost local position
+			got_local_pos_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 		}
 
-		vpe.header.frame_id = local_frame_id;
-		vpe.header.stamp = msg->header.stamp;
-		vpe_pub.publish(vpe);
-
-	} catch (const tf2::TransformException& e) {
-		ROS_WARN_THROTTLE(5, "%s", e.what());
+		RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 10000, "publish zero");
+		PoseStamped zero;
+		zero.header.frame_id = local_frame_id_;
+		zero.header.stamp = now;
+		zero.pose.orientation.w = 1.0;
+		vpe_pub_->publish(zero);
 	}
-}
 
-bool reset(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
+	void localPositionCallback(const PoseStamped::SharedPtr msg)
+	{
+		pose_ = *msg;
+	}
+
+	inline Pose getPose(const PoseStamped::SharedPtr pose)
+	{
+		return pose->pose;
+	}
+
+	inline Pose getPose(const PoseWithCovarianceStamped::SharedPtr pose)
+	{
+		return pose->pose.pose;
+	}
+
+	inline void keepYaw(Quaternion& quaternion)
+	{
+		double yaw = tf2::getYaw(quaternion);
+		quaternion = tf2::toMsg(tf2::Quaternion(tf2::Vector3(0, 0, 1), yaw));
+	}
+
+	void poseCallback(const PoseStamped::SharedPtr msg)
+	{
+		processPose(msg);
+	}
+
+	void poseCovCallback(const PoseWithCovarianceStamped::SharedPtr msg)
+	{
+		processPose(msg);
+	}
+
+	template <typename T>
+	void processPose(const T& msg)
+	{
+		try {
+			if (!frame_id_.empty()) {
+				// get VPE transform from TF
+				auto transform = tf_buffer_->lookupTransform(
+					frame_id_, child_frame_id_,
+					msg->header.stamp, rclcpp::Duration::from_seconds(0.02));
+				vpe_.pose.position.x = transform.transform.translation.x;
+				vpe_.pose.position.y = transform.transform.translation.y;
+				vpe_.pose.position.z = transform.transform.translation.z;
+				vpe_.pose.orientation = transform.transform.rotation;
+			} else {
+				vpe_.pose = getPose(msg);
+			}
+
+			// offset
+			if (!offset_frame_id_.empty()) {
+				auto now = this->now();
+				rclcpp::Time vpe_stamp(vpe_.header.stamp);
+				rclcpp::Time msg_stamp(msg->header.stamp);
+				if (reset_flag_ || (msg_stamp - vpe_stamp) > offset_timeout_) {
+					// calculate the offset
+					if (!frame_id_.empty()) {
+						// calculate from TF
+						offset_ = tf_buffer_->lookupTransform(
+							local_frame_id_, frame_id_,
+							msg->header.stamp, rclcpp::Duration::from_seconds(0.02));
+						offset_.child_frame_id = offset_frame_id_;
+
+					} else {
+						// calculate transform between pose in vpe frame and pose in local frame
+						TransformStamped local_pose = tf_buffer_->lookupTransform(
+							local_frame_id_, child_frame_id_,
+							msg->header.stamp, rclcpp::Duration::from_seconds(0.02));
+						keepYaw(local_pose.transform.rotation);
+
+						// Convert to tf2 types for calculation
+						tf2::Transform vpeTransform, poseTransform;
+						// Convert Pose to Transform
+						vpeTransform.setOrigin(tf2::Vector3(
+							vpe_.pose.position.x,
+							vpe_.pose.position.y,
+							vpe_.pose.position.z));
+						tf2::Quaternion vpe_q;
+						tf2::fromMsg(vpe_.pose.orientation, vpe_q);
+						vpeTransform.setRotation(vpe_q);
+						
+						// Convert Transform to tf2::Transform
+						tf2::fromMsg(local_pose.transform, poseTransform);
+						
+						// Calculate offset
+						tf2::Transform offset_tf = vpeTransform.inverse() * poseTransform;
+						
+						offset_.header.frame_id = local_frame_id_;
+						offset_.header.stamp = msg->header.stamp;
+						offset_.child_frame_id = offset_frame_id_;
+						offset_.transform = tf2::toMsg(offset_tf);
+					}
+
+					static_transform_broadcaster_->sendTransform(offset_);
+					reset_flag_ = false;
+					RCLCPP_INFO(this->get_logger(), "offset reset");
+				}
+				// apply the offset
+				tf2::doTransform(vpe_, vpe_, offset_);
+			}
+
+			vpe_.header.frame_id = local_frame_id_;
+			vpe_.header.stamp = msg->header.stamp;
+			vpe_pub_->publish(vpe_);
+
+		} catch (const tf2::TransformException& e) {
+			RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000, "%s", e.what());
+		}
+	}
+
+	void resetCallback(
+		const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+		std::shared_ptr<std_srvs::srv::Trigger::Response> res)
+	{
+		(void)req; // unused
+		reset_flag_ = true;
+		res->success = true;
+	}
+};
+
+int main(int argc, char **argv)
 {
-	reset_flag = true;
-	res.success = true;
-	return true;
-}
-
-int main(int argc, char **argv) {
-	ros::init(argc, argv, "vpe_publisher");
-	ros::NodeHandle nh, nh_priv("~");
-
-	tf2_ros::TransformListener tf_listener(tf_buffer);
-
-	nh_priv.param<string>("frame_id", frame_id, ""); // name for used visual pose frame
-	nh_priv.param<string>("offset_frame_id", offset_frame_id, ""); // name for published offset frame
-
-	nh.param<string>("mavros/local_position/frame_id", local_frame_id, "map");
-	nh.param<string>("mavros/local_position/tf/child_frame_id", child_frame_id, "base_link");
-	offset_timeout = ros::Duration(nh_priv.param("offset_timeout", 3.0));
-
-	if (!frame_id.empty()) {
-		ROS_INFO("using data from TF");
-	} else {
-		ROS_INFO("using data topic");
-	}
-
-	auto pose_sub = nh_priv.subscribe<PoseStamped>("pose", 1, &callback);
-	auto pose_cov_sub = nh_priv.subscribe<PoseWithCovarianceStamped>("pose_cov", 1, &callback);
-	//auto markers_sub = nh_priv.subscribe<aruco_pose::MarkerArray>("markers", 1, &callback);
-
-	vpe_pub = nh_priv.advertise<PoseStamped>("vpe", 1);
-	//vpe_cov_pub = nh_priv_.advertise<PoseStamped>("pose_cov_pub", 1);
-
-	if (nh_priv.param("force_init", false) || nh_priv.param("publish_zero", false)) { // publish_zero is old name
-		// publish zero to initialize the local position
-		zero_timer = nh.createTimer(ros::Duration(0.1), &publishZero);
-		publish_zero_timeout = ros::Duration(nh_priv.param("force_init_timeout", 5.0));
-		publish_zero_duration = ros::Duration(nh_priv.param("force_init_duration", 5.0));
-		local_position_sub = nh.subscribe("mavros/local_position/pose", 1, &localPositionCallback);
-	}
-
-	auto reset_serv = nh_priv.advertiseService("reset", &reset);
-
-	ROS_INFO("ready");
-	ros::spin();
+	rclcpp::init(argc, argv);
+	rclcpp::spin(std::make_shared<VpePublisher>());
+	rclcpp::shutdown();
+	return 0;
 }

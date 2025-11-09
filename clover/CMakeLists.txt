@@ -80,11 +80,28 @@ rosidl_target_interfaces(simple_offboard
   ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 
+## Declare a C++ executable for vpe_publisher
+add_executable(vpe_publisher src/vpe_publisher.cpp)
+
+ament_target_dependencies(vpe_publisher
+  rclcpp
+  std_msgs
+  geometry_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
+  std_srvs
+)
+
+rosidl_target_interfaces(vpe_publisher
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+
 #############
 ## Install ##
 #############
 
-install(TARGETS simple_offboard
+install(TARGETS simple_offboard vpe_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 
