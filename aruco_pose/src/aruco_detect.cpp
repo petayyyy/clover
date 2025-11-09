@@ -20,24 +20,25 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include <ros/ros.h>
-#include <nodelet/nodelet.h>
-#include <pluginlib/class_list_macros.h>
-#include <tf/transform_datatypes.h>
+#include <memory>
+#include <functional>
+
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <image_transport/image_transport.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <image_transport/image_transport.hpp>
+#include <image_transport/camera_subscriber.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <dynamic_reconfigure/server.h>
-#include <geometry_msgs/Vector3.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
@@ -45,108 +46,129 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 
-#include <aruco_pose/Marker.h>
-#include <aruco_pose/MarkerArray.h>
-#include <aruco_pose/DetectorConfig.h>
-#include <aruco_pose/SetMarkers.h>
+#include <aruco_pose/msg/marker.hpp>
+#include <aruco_pose/msg/marker_array.hpp>
+#include <aruco_pose/srv/set_markers.hpp>
 
 #include "draw.h"
 #include "utils.h"
-#include <memory>
-#include <functional>
 
 using std::vector;
 using cv::Mat;
 
-class ArucoDetect : public nodelet::Nodelet {
+class ArucoDetect : public rclcpp::Node {
 private:
-	std::unique_ptr<tf2_ros::TransformBroadcaster> br_;
-	std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
-	std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
-	std::shared_ptr<dynamic_reconfigure::Server<aruco_pose::DetectorConfig>> dyn_srv_;
+	std::shared_ptr<tf2_ros::TransformBroadcaster> br_;
+	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+	
 	bool enabled_ = true;
 	cv::Ptr<cv::aruco::Dictionary> dictionary_;
 	cv::Ptr<cv::aruco::DetectorParameters> parameters_;
+	
 	image_transport::Publisher debug_pub_;
 	image_transport::CameraSubscriber img_sub_;
-	ros::Publisher markers_pub_, vis_markers_pub_;
-	ros::Subscriber map_markers_sub_;
-	ros::ServiceServer set_markers_srv_;
+	std::shared_ptr<image_transport::ImageTransport> it_;
+	rclcpp::Publisher<aruco_pose::msg::MarkerArray>::SharedPtr markers_pub_;
+	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr vis_markers_pub_;
+	rclcpp::Subscription<aruco_pose::msg::MarkerArray>::SharedPtr map_markers_sub_;
+	rclcpp::Service<aruco_pose::srv::SetMarkers>::SharedPtr set_markers_srv_;
+	
 	bool estimate_poses_, send_tf_, flip_vertical_, auto_flip_, use_map_markers_;
 	bool waiting_for_map_;
 	double length_;
-	ros::Duration transform_timeout_;
+	rclcpp::Duration transform_timeout_;
 	std::unordered_map<int, double> length_override_;
 	std::string frame_id_prefix_, known_vertical_;
 	Mat camera_matrix_, dist_coeffs_;
-	aruco_pose::MarkerArray array_;
+	aruco_pose::msg::MarkerArray array_;
 	std::unordered_set<int> map_markers_ids_;
-	visualization_msgs::MarkerArray vis_array_;
+	visualization_msgs::msg::MarkerArray vis_array_;
+	
+	rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
 
 public:
-	virtual void onInit()
+	explicit ArucoDetect(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+	: rclcpp::Node("aruco_detect", options)
 	{
-		ros::NodeHandle& nh_ = getNodeHandle();
-		ros::NodeHandle& nh_priv_ = getPrivateNodeHandle();
+		br_ = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
+		tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-		br_.reset(new tf2_ros::TransformBroadcaster());
-		tf_buffer_.reset(new tf2_ros::Buffer());
-		tf_listener_.reset(new tf2_ros::TransformListener(*tf_buffer_, nh_));
-
-		int dictionary;
-		dictionary = nh_priv_.param("dictionary", 2);
-		estimate_poses_ = nh_priv_.param("estimate_poses", true);
-		send_tf_ = nh_priv_.param("send_tf", true);
-		use_map_markers_ = nh_priv_.param("use_map_markers", false);
+		int dictionary = this->declare_parameter<int>("dictionary", 2);
+		estimate_poses_ = this->declare_parameter<bool>("estimate_poses", true);
+		send_tf_ = this->declare_parameter<bool>("send_tf", true);
+		use_map_markers_ = this->declare_parameter<bool>("use_map_markers", false);
 		waiting_for_map_ = use_map_markers_;
-		if (estimate_poses_ && !nh_priv_.getParam("length", length_)) {
-			NODELET_FATAL("can't estimate marker's poses as ~length parameter is not defined");
-			ros::shutdown();
+		
+		if (estimate_poses_) {
+			if (!this->has_parameter("length")) {
+				RCLCPP_FATAL(this->get_logger(), "can't estimate marker's poses as ~length parameter is not defined");
+				return;
+			}
+			length_ = this->declare_parameter<double>("length", 0.0);
 		}
-		readLengthOverride(nh_priv_);
-		transform_timeout_ = ros::Duration(nh_priv_.param("transform_timeout", 0.02));
+		
+		readLengthOverride();
+		
+		double transform_timeout_sec = this->declare_parameter<double>("transform_timeout", 0.02);
+		transform_timeout_ = rclcpp::Duration::from_seconds(transform_timeout_sec);
 
-		known_vertical_ = nh_priv_.param("known_vertical", nh_priv_.param("known_tilt", std::string(""))); // known_tilt is an old name
-		flip_vertical_ = nh_priv_.param<bool>("flip_vertical", false);
-		auto_flip_ = nh_priv_.param("auto_flip", false);
+		std::string known_tilt;
+		known_vertical_ = this->declare_parameter<std::string>("known_vertical", "");
+		if (known_vertical_.empty()) {
+			known_vertical_ = this->declare_parameter<std::string>("known_tilt", "");
+		}
+		flip_vertical_ = this->declare_parameter<bool>("flip_vertical", false);
+		auto_flip_ = this->declare_parameter<bool>("auto_flip", false);
 
-		frame_id_prefix_ = nh_priv_.param<std::string>("frame_id_prefix", "aruco_");
+		frame_id_prefix_ = this->declare_parameter<std::string>("frame_id_prefix", "aruco_");
 
 		camera_matrix_ = cv::Mat::zeros(3, 3, CV_64F);
 
 		dictionary_ = cv::aruco::getPredefinedDictionary(static_cast<cv::aruco::PREDEFINED_DICTIONARY_NAME>(dictionary));
 		parameters_ = cv::aruco::DetectorParameters::create();
+		
+		// Initialize parameters from ROS2 parameters
+		updateParameters();
 
-		image_transport::ImageTransport it(nh_);
-		image_transport::ImageTransport it_priv(nh_priv_);
+		it_ = std::make_shared<image_transport::ImageTransport>(shared_from_this());
+		image_transport::ImageTransport it_priv(shared_from_this());
 
-		dyn_srv_ = std::make_shared<dynamic_reconfigure::Server<aruco_pose::DetectorConfig>>(nh_priv_);
-		dyn_srv_->setCallback(std::bind(&ArucoDetect::paramCallback, this, std::placeholders::_1, std::placeholders::_2));
-
-		set_markers_srv_ = nh_priv_.advertiseService("set_length_override", &ArucoDetect::setMarkers, this);
+		set_markers_srv_ = this->create_service<aruco_pose::srv::SetMarkers>(
+			"set_length_override", std::bind(&ArucoDetect::setMarkers, this, 
+				std::placeholders::_1, std::placeholders::_2));
 
 		debug_pub_ = it_priv.advertise("debug", 1);
-		markers_pub_ = nh_priv_.advertise<aruco_pose::MarkerArray>("markers", 1);
-		vis_markers_pub_ = nh_priv_.advertise<visualization_msgs::MarkerArray>("visualization", 1);
-		img_sub_ = it.subscribeCamera("image_raw", 1, &ArucoDetect::imageCallback, this);
-		map_markers_sub_ = nh_.subscribe("map_markers", 1, &ArucoDetect::mapMarkersCallback, this);
+		markers_pub_ = this->create_publisher<aruco_pose::msg::MarkerArray>("markers", 1);
+		vis_markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization", 1);
+		img_sub_ = it_->subscribeCamera("image_raw", 
+			std::bind(&ArucoDetect::imageCallback, this, std::placeholders::_1, std::placeholders::_2), 
+			nullptr, image_transport::TransportHints(this));
+		map_markers_sub_ = this->create_subscription<aruco_pose::msg::MarkerArray>(
+			"map_markers", 1, std::bind(&ArucoDetect::mapMarkersCallback, this, std::placeholders::_1));
 
-		NODELET_INFO("ready");
+		// Parameter callback
+		param_callback_handle_ = this->add_on_set_parameters_callback(
+			std::bind(&ArucoDetect::paramCallback, this, std::placeholders::_1));
+
+		RCLCPP_INFO(this->get_logger(), "ready");
 	}
 
 private:
-	void imageCallback(const sensor_msgs::ImageConstPtr& msg, const sensor_msgs::CameraInfoConstPtr &cinfo)
+	void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg, 
+	                   const sensor_msgs::msg::CameraInfo::ConstSharedPtr &cinfo)
 	{
 		if (!enabled_) return;
 		if (waiting_for_map_) return;
 
-		Mat image = cv_bridge::toCvShare(msg)->image;
+		Mat image = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8)->image;
 
 		vector<int> ids;
 		vector<vector<cv::Point2f>> corners, rejected;
 		vector<cv::Vec3d> rvecs, tvecs;
 		vector<cv::Point3f> obj_points;
-		geometry_msgs::TransformStamped vertical;
+		geometry_msgs::msg::TransformStamped vertical;
 
 		// Detect markers
 		cv::aruco::detectMarkers(image, dictionary_, corners, ids, parameters_, rejected);
@@ -186,16 +208,17 @@ private:
 						vertical = tf_buffer_->lookupTransform(msg->header.frame_id, known_vertical_,
 						                                       msg->header.stamp, transform_timeout_);
 					} catch (const tf2::TransformException& e) {
-						NODELET_WARN_THROTTLE(5, "can't retrieve known vertical: %s", e.what());
+						RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000, 
+							"can't retrieve known vertical: %s", e.what());
 					}
 				}
 			}
 
 			array_.markers.reserve(ids.size());
-			aruco_pose::Marker marker;
-			vector<geometry_msgs::TransformStamped> transforms;
+			aruco_pose::msg::Marker marker;
+			vector<geometry_msgs::msg::TransformStamped> transforms;
 			transforms.reserve(ids.size());
-			geometry_msgs::TransformStamped transform;
+			geometry_msgs::msg::TransformStamped transform;
 			transform.header.stamp = msg->header.stamp;
 			transform.header.frame_id = msg->header.frame_id;
 
@@ -241,13 +264,13 @@ private:
 			}
 		}
 
-		markers_pub_.publish(array_);
+		markers_pub_->publish(array_);
 
 		// Publish visualization markers
-		if (estimate_poses_ && vis_markers_pub_.getNumSubscribers() != 0) {
+		if (estimate_poses_ && vis_markers_pub_->get_subscription_count() > 0) {
 			// Delete all markers
-			visualization_msgs::Marker vis_marker;
-			vis_marker.action = visualization_msgs::Marker::DELETEALL;
+			visualization_msgs::msg::Marker vis_marker;
+			vis_marker.action = visualization_msgs::msg::Marker::DELETEALL;
 			vis_array_.markers.clear();
 			vis_array_.markers.reserve(ids.size() + 1);
 			vis_array_.markers.push_back(vis_marker);
@@ -256,11 +279,11 @@ private:
 				pushVisMarkers(msg->header.frame_id, msg->header.stamp, array_.markers[i].pose,
 				               getMarkerLength(ids[i]), ids[i], i);
 
-			vis_markers_pub_.publish(vis_array_);
+			vis_markers_pub_->publish(vis_array_);
 		}
 
 		// Publish debug image
-		if (debug_pub_.getNumSubscribers() != 0) {
+		if (debug_pub_.getNumSubscribers() > 0) {
 			Mat debug = image.clone();
 			cv::aruco::drawDetectedMarkers(debug, corners, ids); // draw markers
 			if (estimate_poses_)
@@ -276,7 +299,7 @@ private:
 		}
 	}
 
-	inline void fillCorners(aruco_pose::Marker& marker, const vector<cv::Point2f>& corners) const
+	inline void fillCorners(aruco_pose::msg::Marker& marker, const vector<cv::Point2f>& corners) const
 	{
 		marker.c1.x = corners[0].x;
 		marker.c2.x = corners[1].x;
@@ -288,61 +311,36 @@ private:
 		marker.c4.y = corners[3].y;
 	}
 
-	inline void fillPose(geometry_msgs::Pose& pose, const cv::Vec3d& rvec, const cv::Vec3d& tvec) const
+	void pushVisMarkers(const std::string& frame_id, const rclcpp::Time& stamp,
+	                    const geometry_msgs::msg::Pose &pose, double length, int id, int index)
 	{
-		pose.position.x = tvec[0];
-		pose.position.y = tvec[1];
-		pose.position.z = tvec[2];
-
-		double angle = norm(rvec);
-		cv::Vec3d axis = rvec / angle;
-
-		tf2::Quaternion q;
-		q.setRotation(tf2::Vector3(axis[0], axis[1], axis[2]), angle);
-
-		pose.orientation.w = q.w();
-		pose.orientation.x = q.x();
-		pose.orientation.y = q.y();
-		pose.orientation.z = q.z();
-	}
-
-	inline void fillTranslation(geometry_msgs::Vector3& translation, const cv::Vec3d& tvec) const
-	{
-		translation.x = tvec[0];
-		translation.y = tvec[1];
-		translation.z = tvec[2];
-	}
-
-	void pushVisMarkers(const std::string& frame_id, const ros::Time& stamp,
-	                    const geometry_msgs::Pose &pose, double length, int id, int index)
-	{
-		visualization_msgs::Marker marker;
+		visualization_msgs::msg::Marker marker;
 		marker.header.frame_id = frame_id;
 		marker.header.stamp = stamp;
-		marker.action = visualization_msgs::Marker::ADD;
+		marker.action = visualization_msgs::msg::Marker::ADD;
 		marker.id = index;
 
 		// Marker
 		marker.ns = "aruco_marker";
-		marker.type = visualization_msgs::Marker::CUBE;
+		marker.type = visualization_msgs::msg::Marker::CUBE;
 		marker.scale.x = length;
 		marker.scale.y = length;
 		marker.scale.z = 0.001;
-		marker.color.r = 1;
-		marker.color.g = 1;
-		marker.color.b = 1;
+		marker.color.r = 1.0;
+		marker.color.g = 1.0;
+		marker.color.b = 1.0;
 		marker.color.a = 0.9;
 		marker.pose = pose;
 		vis_array_.markers.push_back(marker);
 
 		// Label
 		marker.ns = "aruco_marker_label";
-		marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+		marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
 		marker.scale.z = length * 0.6;
-		marker.color.r = 0;
-		marker.color.g = 0;
-		marker.color.b = 0;
-		marker.color.a = 1;
+		marker.color.r = 0.0;
+		marker.color.g = 0.0;
+		marker.color.b = 0.0;
+		marker.color.a = 1.0;
 		marker.text = std::to_string(id);
 		marker.pose = pose;
 		vis_array_.markers.push_back(marker);
@@ -353,12 +351,24 @@ private:
 		return frame_id_prefix_ + std::to_string(id);
 	}
 
-	void readLengthOverride(ros::NodeHandle& nh)
+	void readLengthOverride()
 	{
-		std::map<std::string, double> length_override;
-		nh.getParam("length_override", length_override);
-		for (auto const& item : length_override) {
-			length_override_[std::stoi(item.first)] = item.second;
+		// Read length_override parameters (format: length_override.<id> = value)
+		std::vector<std::string> prefixes = {"length_override"};
+		auto result = this->list_parameters(prefixes, 0);
+		for (const auto& param_name : result.names) {
+			if (param_name.find("length_override.") == 0) {
+				std::string id_str = param_name.substr(16); // "length_override." length
+				try {
+					int id = std::stoi(id_str);
+					double value = this->declare_parameter<double>(param_name, 0.0);
+					if (value > 0) {
+						length_override_[id] = value;
+					}
+				} catch (...) {
+					RCLCPP_WARN(this->get_logger(), "Invalid length_override parameter: %s", param_name.c_str());
+				}
+			}
 		}
 	}
 
@@ -372,33 +382,35 @@ private:
 		}
 	}
 
-	bool setMarkers(aruco_pose::SetMarkers::Request& req, aruco_pose::SetMarkers::Response& res)
+	void setMarkers(const std::shared_ptr<aruco_pose::srv::SetMarkers::Request> req,
+	                std::shared_ptr<aruco_pose::srv::SetMarkers::Response> res)
 	{
-		for (auto const& marker : req.markers) {
+		for (auto const& marker : req->markers) {
 			if (marker.id > 999) {
-				res.message = "Invalid marker id: " + std::to_string(marker.id);
-				ROS_ERROR("%s", res.message.c_str());
-				return true;
+				res->message = "Invalid marker id: " + std::to_string(marker.id);
+				RCLCPP_ERROR(this->get_logger(), "%s", res->message.c_str());
+				res->success = false;
+				return;
 			}
 			if (!std::isfinite(marker.length) || marker.length <= 0) {
-				res.message = "Invalid marker " + std::to_string(marker.id) + " length: " + std::to_string(marker.length);
-				ROS_ERROR("%s", res.message.c_str());
-				return true;
+				res->message = "Invalid marker " + std::to_string(marker.id) + " length: " + std::to_string(marker.length);
+				RCLCPP_ERROR(this->get_logger(), "%s", res->message.c_str());
+				res->success = false;
+				return;
 			}
 		}
 
-		for (auto const& marker : req.markers) {
+		for (auto const& marker : req->markers) {
 			length_override_[marker.id] = marker.length;
 		}
 
-		res.success = true;
-		return true;
+		res->success = true;
 	}
 
-	void mapMarkersCallback(const aruco_pose::MarkerArray& msg)
+	void mapMarkersCallback(const aruco_pose::msg::MarkerArray::SharedPtr msg)
 	{
 		map_markers_ids_.clear();
-		for (auto const& marker : msg.markers) {
+		for (auto const& marker : msg->markers) {
 			map_markers_ids_.insert(marker.id);
 			if (use_map_markers_) {
 				if (length_override_.find(marker.id) == length_override_.end()) {
@@ -409,38 +421,56 @@ private:
 		waiting_for_map_ = false;
 	}
 
-	void paramCallback(aruco_pose::DetectorConfig &config, uint32_t level)
+	rcl_interfaces::msg::SetParametersResult paramCallback(const std::vector<rclcpp::Parameter> & parameters)
 	{
-		enabled_ = config.enabled && config.length > 0;
-		length_ = config.length;
-		parameters_->adaptiveThreshConstant = config.adaptiveThreshConstant;
-		parameters_->adaptiveThreshWinSizeMin = config.adaptiveThreshWinSizeMin;
-		parameters_->adaptiveThreshWinSizeMax = config.adaptiveThreshWinSizeMax;
-		parameters_->adaptiveThreshWinSizeStep = config.adaptiveThreshWinSizeStep;
-		parameters_->cornerRefinementMaxIterations = config.cornerRefinementMaxIterations;
-		parameters_->cornerRefinementMethod = config.cornerRefinementMethod;
-		parameters_->cornerRefinementMinAccuracy = config.cornerRefinementMinAccuracy;
-		parameters_->cornerRefinementWinSize = config.cornerRefinementWinSize;
+		rcl_interfaces::msg::SetParametersResult result;
+		result.successful = true;
+		
+		for (const auto & param : parameters) {
+			if (param.get_name() == "enabled") {
+				enabled_ = param.as_bool() && length_ > 0;
+			} else if (param.get_name() == "length") {
+				length_ = param.as_double();
+				enabled_ = enabled_ && length_ > 0;
+			} else {
+				updateParameters();
+			}
+		}
+		
+		return result;
+	}
+
+	void updateParameters()
+	{
+		parameters_->adaptiveThreshConstant = this->declare_parameter<double>("adaptiveThreshConstant", parameters_->adaptiveThreshConstant);
+		parameters_->adaptiveThreshWinSizeMin = this->declare_parameter<int>("adaptiveThreshWinSizeMin", parameters_->adaptiveThreshWinSizeMin);
+		parameters_->adaptiveThreshWinSizeMax = this->declare_parameter<int>("adaptiveThreshWinSizeMax", parameters_->adaptiveThreshWinSizeMax);
+		parameters_->adaptiveThreshWinSizeStep = this->declare_parameter<int>("adaptiveThreshWinSizeStep", parameters_->adaptiveThreshWinSizeStep);
+		parameters_->cornerRefinementMaxIterations = this->declare_parameter<int>("cornerRefinementMaxIterations", parameters_->cornerRefinementMaxIterations);
+		parameters_->cornerRefinementMethod = this->declare_parameter<int>("cornerRefinementMethod", parameters_->cornerRefinementMethod);
+		parameters_->cornerRefinementMinAccuracy = this->declare_parameter<double>("cornerRefinementMinAccuracy", parameters_->cornerRefinementMinAccuracy);
+		parameters_->cornerRefinementWinSize = this->declare_parameter<int>("cornerRefinementWinSize", parameters_->cornerRefinementWinSize);
 #if ((CV_VERSION_MAJOR == 3) && (CV_VERSION_MINOR >= 4) && (CV_VERSION_REVISION >= 7)) || (CV_VERSION_MAJOR > 3)
-		parameters_->detectInvertedMarker = config.detectInvertedMarker;
+		parameters_->detectInvertedMarker = this->declare_parameter<bool>("detectInvertedMarker", false);
 #endif
-		parameters_->errorCorrectionRate = config.errorCorrectionRate;
-		parameters_->minCornerDistanceRate = config.minCornerDistanceRate;
-		parameters_->markerBorderBits = config.markerBorderBits;
-		parameters_->maxErroneousBitsInBorderRate = config.maxErroneousBitsInBorderRate;
-		parameters_->minDistanceToBorder = config.minDistanceToBorder;
-		parameters_->minMarkerDistanceRate = config.minMarkerDistanceRate;
-		parameters_->minMarkerPerimeterRate = config.minMarkerPerimeterRate;
-		parameters_->maxMarkerPerimeterRate = config.maxMarkerPerimeterRate;
-		parameters_->minOtsuStdDev = config.minOtsuStdDev;
-		parameters_->perspectiveRemoveIgnoredMarginPerCell = config.perspectiveRemoveIgnoredMarginPerCell;
-		parameters_->perspectiveRemovePixelPerCell = config.perspectiveRemovePixelPerCell;
-		parameters_->polygonalApproxAccuracyRate = config.polygonalApproxAccuracyRate;
+		parameters_->errorCorrectionRate = this->declare_parameter<double>("errorCorrectionRate", parameters_->errorCorrectionRate);
+		parameters_->minCornerDistanceRate = this->declare_parameter<double>("minCornerDistanceRate", parameters_->minCornerDistanceRate);
+		parameters_->markerBorderBits = this->declare_parameter<int>("markerBorderBits", parameters_->markerBorderBits);
+		parameters_->maxErroneousBitsInBorderRate = this->declare_parameter<double>("maxErroneousBitsInBorderRate", parameters_->maxErroneousBitsInBorderRate);
+		parameters_->minDistanceToBorder = this->declare_parameter<int>("minDistanceToBorder", parameters_->minDistanceToBorder);
+		parameters_->minMarkerDistanceRate = this->declare_parameter<double>("minMarkerDistanceRate", parameters_->minMarkerDistanceRate);
+		parameters_->minMarkerPerimeterRate = this->declare_parameter<double>("minMarkerPerimeterRate", parameters_->minMarkerPerimeterRate);
+		parameters_->maxMarkerPerimeterRate = this->declare_parameter<double>("maxMarkerPerimeterRate", parameters_->maxMarkerPerimeterRate);
+		parameters_->minOtsuStdDev = this->declare_parameter<double>("minOtsuStdDev", parameters_->minOtsuStdDev);
+		parameters_->perspectiveRemoveIgnoredMarginPerCell = this->declare_parameter<double>("perspectiveRemoveIgnoredMarginPerCell", parameters_->perspectiveRemoveIgnoredMarginPerCell);
+		parameters_->perspectiveRemovePixelPerCell = this->declare_parameter<int>("perspectiveRemovePixelPerCell", parameters_->perspectiveRemovePixelPerCell);
+		parameters_->polygonalApproxAccuracyRate = this->declare_parameter<double>("polygonalApproxAccuracyRate", parameters_->polygonalApproxAccuracyRate);
 #if ((CV_VERSION_MAJOR == 3) && (CV_VERSION_MINOR >= 4) && (CV_VERSION_REVISION >= 2)) || (CV_VERSION_MAJOR > 3)
-		parameters_->aprilTagQuadDecimate = config.aprilTagQuadDecimate;
-		parameters_->aprilTagQuadSigma = config.aprilTagQuadSigma;
+		parameters_->aprilTagQuadDecimate = this->declare_parameter<double>("aprilTagQuadDecimate", 0.0);
+		parameters_->aprilTagQuadSigma = this->declare_parameter<double>("aprilTagQuadSigma", 0.0);
 #endif
+		enabled_ = this->declare_parameter<bool>("enabled", true) && length_ > 0;
 	}
 };
 
-PLUGINLIB_EXPORT_CLASS(ArucoDetect, nodelet::Nodelet)
+RCLCPP_COMPONENTS_REGISTER_NODE(ArucoDetect)

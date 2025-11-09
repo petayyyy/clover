@@ -20,30 +20,30 @@
 #include <fstream>
 #include <algorithm>
 #include <memory>
-#include <ros/ros.h>
-#include <nodelet/nodelet.h>
-#include <pluginlib/class_list_macros.h>
-#include <image_transport/image_transport.h>
+#include <sstream>
+#include <cstring>
+
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_components/register_node_macro.hpp>
+#include <image_transport/image_transport.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <dynamic_reconfigure/server.h>
-#include <tf/transform_datatypes.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <sensor_msgs/Image.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
-#include <aruco_pose/MarkerArray.h>
-#include <aruco_pose/Marker.h>
-#include <aruco_pose/MapConfig.h>
+#include <aruco_pose/msg/marker_array.hpp>
+#include <aruco_pose/msg/marker.hpp>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
@@ -53,105 +53,113 @@
 
 using std::vector;
 using cv::Mat;
-using sensor_msgs::Image;
-using sensor_msgs::CameraInfo;
-using aruco_pose::MarkerArray;
+using sensor_msgs::msg::Image;
+using sensor_msgs::msg::CameraInfo;
+using aruco_pose::msg::MarkerArray;
 
 typedef message_filters::sync_policies::ExactTime<Image, CameraInfo, MarkerArray> SyncPolicy;
 
-class ArucoMap : public nodelet::Nodelet {
+class ArucoMap : public rclcpp::Node {
 private:
-	ros::Publisher img_pub_, pose_pub_, markers_pub_, vis_markers_pub_;
+	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr img_pub_;
+	rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;
+	rclcpp::Publisher<aruco_pose::msg::MarkerArray>::SharedPtr markers_pub_;
+	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr vis_markers_pub_;
 	image_transport::Publisher debug_pub_;
 	message_filters::Subscriber<Image> image_sub_;
 	message_filters::Subscriber<CameraInfo> info_sub_;
 	message_filters::Subscriber<MarkerArray> markers_sub_;
-	boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
+	std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 	cv::Ptr<cv::aruco::Board> board_;
 	Mat camera_matrix_, dist_coeffs_;
-	geometry_msgs::TransformStamped transform_;
-	geometry_msgs::PoseWithCovarianceStamped pose_;
-	vector<geometry_msgs::TransformStamped> markers_transforms_;
-	aruco_pose::MarkerArray markers_;
-	tf2_ros::TransformBroadcaster br_;
-	tf2_ros::StaticTransformBroadcaster static_br_;
-	tf2_ros::Buffer tf_buffer_;
-	tf2_ros::TransformListener tf_listener_{tf_buffer_};
-	std::shared_ptr<dynamic_reconfigure::Server<aruco_pose::MapConfig>> dyn_srv_;
+	geometry_msgs::msg::TransformStamped transform_;
+	geometry_msgs::msg::PoseWithCovarianceStamped pose_;
+	vector<geometry_msgs::msg::TransformStamped> markers_transforms_;
+	aruco_pose::msg::MarkerArray markers_;
+	std::shared_ptr<tf2_ros::TransformBroadcaster> br_;
+	std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_br_;
+	std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+	std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 	bool enabled_ = true;
 	std::string type_;
-	visualization_msgs::MarkerArray vis_array_;
+	visualization_msgs::msg::MarkerArray vis_array_;
 	std::string known_vertical_, map_, markers_frame_, markers_parent_frame_;
 	int image_width_, image_height_, image_margin_;
 	bool flip_vertical_, auto_flip_, image_axis_, put_markers_count_to_covariance_;
+	
+	rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
 
 public:
-	virtual void onInit()
+	explicit ArucoMap(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+	: rclcpp::Node("aruco_map", options)
 	{
-		ros::NodeHandle &nh_ = getNodeHandle();
-		ros::NodeHandle &nh_priv_ = getPrivateNodeHandle();
+		image_transport::ImageTransport it_priv(shared_from_this());
 
-		image_transport::ImageTransport it_priv(nh_priv_);
+		img_pub_ = this->create_publisher<sensor_msgs::msg::Image>("image", rclcpp::QoS(1).transient_local());
+		markers_pub_ = this->create_publisher<aruco_pose::msg::MarkerArray>("map", rclcpp::QoS(1).transient_local());
 
-		// TODO: why image_transport doesn't work here?
-		img_pub_ = nh_priv_.advertise<sensor_msgs::Image>("image", 1, true);
-		markers_pub_ = nh_priv_.advertise<aruco_pose::MarkerArray>("map", 1, true);
+		br_ = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
+		static_br_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(*this);
+		tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+		tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
 		board_ = cv::makePtr<cv::aruco::Board>();
+		int dictionary = this->declare_parameter<int>("dictionary", 2);
 		board_->dictionary = cv::aruco::getPredefinedDictionary(
-			                 static_cast<cv::aruco::PREDEFINED_DICTIONARY_NAME>(nh_priv_.param("dictionary", 2)));
+			                 static_cast<cv::aruco::PREDEFINED_DICTIONARY_NAME>(dictionary));
 		camera_matrix_ = cv::Mat::zeros(3, 3, CV_64F);
 
-		type_ = nh_priv_.param<std::string>("type", "map");
-		transform_.child_frame_id = nh_priv_.param<std::string>("frame_id", "aruco_map");
-		known_vertical_ = nh_priv_.param("known_vertical", nh_priv_.param("known_tilt", std::string(""))); // known_tilt is an old name
-		flip_vertical_ = nh_priv_.param<bool>("flip_vertical", false);
-		auto_flip_ = nh_priv_.param("auto_flip", false);
-		image_width_ = nh_priv_.param("image_width" , 2000);
-		image_height_ = nh_priv_.param("image_height", 2000);
-		image_margin_ = nh_priv_.param("image_margin", 200);
-		image_axis_ = nh_priv_.param("image_axis", true);
-		put_markers_count_to_covariance_ = nh_priv_.param("put_markers_count_to_covariance", false);
-		markers_parent_frame_ = nh_priv_.param<std::string>("markers/frame_id", transform_.child_frame_id);
-		markers_frame_ = nh_priv_.param<std::string>("markers/child_frame_id_prefix", "");
-
-		// createStripLine();
+		type_ = this->declare_parameter<std::string>("type", "map");
+		transform_.child_frame_id = this->declare_parameter<std::string>("frame_id", "aruco_map");
+		std::string known_tilt;
+		known_vertical_ = this->declare_parameter<std::string>("known_vertical", "");
+		if (known_vertical_.empty()) {
+			known_vertical_ = this->declare_parameter<std::string>("known_tilt", "");
+		}
+		flip_vertical_ = this->declare_parameter<bool>("flip_vertical", false);
+		auto_flip_ = this->declare_parameter<bool>("auto_flip", false);
+		image_width_ = this->declare_parameter<int>("image_width", 2000);
+		image_height_ = this->declare_parameter<int>("image_height", 2000);
+		image_margin_ = this->declare_parameter<int>("image_margin", 200);
+		image_axis_ = this->declare_parameter<bool>("image_axis", true);
+		put_markers_count_to_covariance_ = this->declare_parameter<bool>("put_markers_count_to_covariance", false);
+		markers_parent_frame_ = this->declare_parameter<std::string>("markers.frame_id", transform_.child_frame_id);
+		markers_frame_ = this->declare_parameter<std::string>("markers.child_frame_id_prefix", "");
 
 		if (type_ == "map") {
-			map_ = nh_priv_.param<std::string>("map" , "");
+			map_ = this->declare_parameter<std::string>("map", "");
 			loadMap(map_);
 		} else if (type_ == "gridboard") {
-			createGridBoard(nh_priv_);
+			createGridBoard();
 		} else {
-			NODELET_FATAL("unknown type: %s", type_.c_str());
-			ros::shutdown();
+			RCLCPP_FATAL(this->get_logger(), "unknown type: %s", type_.c_str());
+			return;
 		}
 
-		pose_pub_ = nh_priv_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 1);
-		vis_markers_pub_ = nh_priv_.advertise<visualization_msgs::MarkerArray>("visualization", 1, true);
+		pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("pose", 1);
+		vis_markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization", rclcpp::QoS(1).transient_local());
 		debug_pub_ = it_priv.advertise("debug", 1);
 
 		publishMap();
 
-		image_sub_.subscribe(nh_, "image_raw", 1);
-		info_sub_.subscribe(nh_, "camera_info", 1);
-		markers_sub_.subscribe(nh_, "markers", 1);
+		image_sub_.subscribe(this, "image_raw");
+		info_sub_.subscribe(this, "camera_info");
+		markers_sub_.subscribe(this, "markers");
 
-		sync_.reset(new message_filters::Synchronizer<SyncPolicy>(SyncPolicy(10), image_sub_, info_sub_, markers_sub_));
-		sync_->registerCallback(boost::bind(&ArucoMap::callback, this, _1, _2, _3));
+		sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
+			SyncPolicy(10), image_sub_, info_sub_, markers_sub_);
+		sync_->registerCallback(std::bind(&ArucoMap::callback, this, 
+			std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-		dyn_srv_ = std::make_shared<dynamic_reconfigure::Server<aruco_pose::MapConfig>>(nh_priv_);
-		dynamic_reconfigure::Server<aruco_pose::MapConfig>::CallbackType cb;
+		param_callback_handle_ = this->add_on_set_parameters_callback(
+			std::bind(&ArucoMap::paramCallback, this, std::placeholders::_1));
 
-		cb = std::bind(&ArucoMap::paramCallback, this, std::placeholders::_1, std::placeholders::_2);
-		dyn_srv_->setCallback(cb);
-
-		NODELET_INFO("ready");
+		RCLCPP_INFO(this->get_logger(), "ready");
 	}
 
-	void callback(const sensor_msgs::ImageConstPtr& image,
-	              const sensor_msgs::CameraInfoConstPtr& cinfo,
-	              const aruco_pose::MarkerArrayConstPtr& markers)
+	void callback(const sensor_msgs::msg::Image::ConstSharedPtr& image,
+	              const sensor_msgs::msg::CameraInfo::ConstSharedPtr& cinfo,
+	              const aruco_pose::msg::MarkerArray::ConstSharedPtr& markers)
 	{
 		if (!enabled_) return;
 		if (markers->markers.empty()) return; // map not loaded
@@ -190,7 +198,7 @@ public:
 					}
 				}
 			}
-			pose_.pose.covariance[0] = valid_markers;
+			pose_.pose.covariance[0] = static_cast<double>(valid_markers);
 		}
 
 		if (known_vertical_.empty()) {
@@ -214,23 +222,27 @@ public:
 			double center_x = 0, center_y = 0, center_z = 0;
 			alignObjPointsToCenter(obj_points, center_x, center_y, center_z);
 
-			valid = solvePnP(obj_points, img_points, camera_matrix_, dist_coeffs_, rvec, tvec, false);
+			valid = cv::solvePnP(obj_points, img_points, camera_matrix_, dist_coeffs_, rvec, tvec, false);
 			if (!valid) goto publish_debug;
 
 			fillTransform(transform_.transform, rvec, tvec);
 			try {
-				geometry_msgs::TransformStamped vertical = tf_buffer_.lookupTransform(markers->header.frame_id,
-				                                           known_vertical_, markers->header.stamp, ros::Duration(0.02));
+				geometry_msgs::msg::TransformStamped vertical = tf_buffer_->lookupTransform(markers->header.frame_id,
+				                                           known_vertical_, markers->header.stamp, rclcpp::Duration::from_seconds(0.02));
 				applyVertical(transform_.transform.rotation, vertical.transform.rotation, flip_vertical_, auto_flip_);
 			} catch (const tf2::TransformException& e) {
-				NODELET_WARN_THROTTLE(1, "can't retrieve known vertical: %s", e.what());
+				RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, 
+					"can't retrieve known vertical: %s", e.what());
 			}
 
-			geometry_msgs::TransformStamped shift;
+			geometry_msgs::msg::TransformStamped shift;
 			shift.transform.translation.x = -center_x;
 			shift.transform.translation.y = -center_y;
 			shift.transform.translation.z = -center_z;
-			shift.transform.rotation.w = 1;
+			shift.transform.rotation.w = 1.0;
+			shift.transform.rotation.x = 0.0;
+			shift.transform.rotation.y = 0.0;
+			shift.transform.rotation.z = 0.0;
 			tf2::doTransform(shift, transform_, transform_);
 
 			// for debug topic
@@ -245,9 +257,9 @@ public:
 		}
 
 		if (!transform_.child_frame_id.empty()) {
-			br_.sendTransform(transform_);
+			br_->sendTransform(transform_);
 		}
-		pose_pub_.publish(pose_);
+		pose_pub_->publish(pose_);
 
 publish_debug:
 		// publish debug image (even if no map detected)
@@ -297,13 +309,13 @@ publish_debug:
 
 		clearMarkers();
 
-		if (map_ == "") {
-			NODELET_INFO("No map loaded");
+		if (map_.empty()) {
+			RCLCPP_INFO(this->get_logger(), "No map loaded");
 			return;
 		}
 
 		if (!f.good()) {
-			NODELET_ERROR("%s - %s", strerror(errno), filename.c_str());
+			RCLCPP_ERROR(this->get_logger(), "%s - %s", strerror(errno), filename.c_str());
 			map_ = "";
 			return;
 		}
@@ -322,47 +334,45 @@ publish_debug:
 			}
 
 			if (first == '#') {
-				NODELET_DEBUG("Skipping line as a comment: %s", line.c_str());
+				RCLCPP_DEBUG(this->get_logger(), "Skipping line as a comment: %s", line.c_str());
 				continue;
 			} else if (isdigit(first)) {
 				// Put the digit back into the stream
-				// Note that this is a non-modifying putback, so this should work with istreams
-				// (see https://en.cppreference.com/w/cpp/io/basic_istream/putback)
 				s.putback(first);
 			} else {
 				// Probably garbage data; inform user and throw an exception, possibly killing nodelet
-				NODELET_ERROR("Malformed input: %s", line.c_str());
+				RCLCPP_ERROR(this->get_logger(), "Malformed input: %s", line.c_str());
 				map_ = "";
 				clearMarkers();
 				return;
 			}
 
 			if (!(s >> id >> length >> x >> y)) {
-				NODELET_ERROR("Not enough data in line: %s; "
+				RCLCPP_ERROR(this->get_logger(), "Not enough data in line: %s; "
 				          "Each marker must have at least id, length, x, y fields", line.c_str());
 				continue;
 			}
 			// Be less strict about z, yaw, pitch roll
 			if (!(s >> z)) {
-				NODELET_DEBUG("No z coordinate provided for marker %d, assuming 0", id);
+				RCLCPP_DEBUG(this->get_logger(), "No z coordinate provided for marker %d, assuming 0", id);
 				z = 0;
 			}
 			if (!(s >> yaw)) {
-				NODELET_DEBUG("No yaw provided for marker %d, assuming 0", id);
+				RCLCPP_DEBUG(this->get_logger(), "No yaw provided for marker %d, assuming 0", id);
 				yaw = 0;
 			}
 			if (!(s >> pitch)) {
-				NODELET_DEBUG("No pitch provided for marker %d, assuming 0", id);
+				RCLCPP_DEBUG(this->get_logger(), "No pitch provided for marker %d, assuming 0", id);
 				pitch = 0;
 			}
 			if (!(s >> roll)) {
-				NODELET_DEBUG("No roll provided for marker %d, assuming 0", id);
+				RCLCPP_DEBUG(this->get_logger(), "No roll provided for marker %d, assuming 0", id);
 				roll = 0;
 			}
 			addMarker(id, length, x, y, z, yaw, pitch, roll);
 		}
 
-		NODELET_INFO("loading %s complete (%d markers)", filename.c_str(), static_cast<int>(board_->ids.size()));
+		RCLCPP_INFO(this->get_logger(), "loading %s complete (%d markers)", filename.c_str(), static_cast<int>(board_->ids.size()));
 	}
 
 	void publishMap()
@@ -370,29 +380,28 @@ publish_debug:
 		publishMarkersFrames();
 		publishMarkers();
 		publishMapImage();
-		vis_markers_pub_.publish(vis_array_);
+		vis_markers_pub_->publish(vis_array_);
 	}
 
-	void createGridBoard(ros::NodeHandle& nh)
+	void createGridBoard()
 	{
-		NODELET_INFO("generate gridboard");
-		NODELET_WARN("gridboard maps are deprecated");
+		RCLCPP_INFO(this->get_logger(), "generate gridboard");
+		RCLCPP_WARN(this->get_logger(), "gridboard maps are deprecated");
 
-		int markers_x, markers_y, first_marker;
+		int markers_x = this->declare_parameter<int>("markers_x", 10);
+		int markers_y = this->declare_parameter<int>("markers_y", 10);
+		int first_marker = this->declare_parameter<int>("first_marker", 0);
 		double markers_side, markers_sep_x, markers_sep_y;
+		
+		param(this, "markers_side", markers_side);
+		param(this, "markers_sep_x", markers_sep_x);
+		param(this, "markers_sep_y", markers_sep_y);
+
 		std::vector<int> marker_ids;
-		markers_x = nh.param("markers_x", 10);
-		markers_y = nh.param("markers_y", 10);
-		first_marker = nh.param("first_marker", 0);
-
-		param(nh, "markers_side", markers_side);
-		param(nh, "markers_sep_x", markers_sep_x);
-		param(nh, "markers_sep_y", markers_sep_y);
-
-		if (nh.getParam("marker_ids", marker_ids)) {
+		if (this->get_parameter("marker_ids", marker_ids)) {
 			if ((unsigned int)(markers_x * markers_y) != marker_ids.size()) {
-				NODELET_FATAL("~marker_ids length should be equal to ~markers_x * ~markers_y");
-				ros::shutdown();
+				RCLCPP_FATAL(this->get_logger(), "~marker_ids length should be equal to ~markers_x * ~markers_y");
+				return;
 			}
 		} else {
 			// Fill marker_ids automatically
@@ -408,7 +417,7 @@ publish_debug:
 			for(int x = 0; x < markers_x; x++) {
 				double x_pos = x * (markers_side + markers_sep_x);
 				double y_pos = max_y - y * (markers_side + markers_sep_y) - markers_side;
-				NODELET_INFO("add marker %d %g %g", marker_ids[y * markers_y + x], x_pos, y_pos);
+				RCLCPP_INFO(this->get_logger(), "add marker %d %g %g", marker_ids[y * markers_y + x], x_pos, y_pos);
 				addMarker(marker_ids[y * markers_y + x], markers_side, x_pos, y_pos, 0, 0, 0, 0);
 			}
 		}
@@ -423,51 +432,38 @@ publish_debug:
 		markers_transforms_.clear();
 	}
 
-	// void createStripLine()
-	// {
-	// 	visualization_msgs::Marker marker;
-	// 	marker.header.frame_id = transform_.child_frame_id;
-	// 	marker.action = visualization_msgs::Marker::ADD;
-	// 	marker.ns = "aruco_map_link";
-	// 	marker.type = visualization_msgs::Marker::LINE_STRIP;
-	// 	marker.scale.x = 0.02;
-	// 	marker.color.g = 1;
-	// 	marker.color.a = 0.8;
-	// 	marker.frame_locked = true;
-	// 	marker.pose.orientation.w = 1;
-	// 	vis_array_.markers.push_back(marker);
-	// }
-
 	void addMarker(int id, double length, double x, double y, double z,
 				   double yaw, double pitch, double roll)
 	{
 		// Check whether the id is in range for current dictionary
 		int num_markers = board_->dictionary->bytesList.rows;
 		if (num_markers <= id) {
-			NODELET_ERROR("Marker id %d is not in dictionary; current dictionary contains %d markers. "
+			RCLCPP_ERROR(this->get_logger(), "Marker id %d is not in dictionary; current dictionary contains %d markers. "
 			              "Please see https://github.com/CopterExpress/clover/blob/master/aruco_pose/README.md#parameters for details",
 					  id, num_markers);
 			return;
 		}
 		// Check if marker is already in the board
 		if (std::count(board_->ids.begin(), board_->ids.end(), id) > 0) {
-			NODELET_ERROR("Marker id %d is already in the map", id);
+			RCLCPP_ERROR(this->get_logger(), "Marker id %d is already in the map", id);
 			return;
 		}
-		// Create transform
-		tf::Quaternion q;
+		// Create transform using tf2
+		tf2::Quaternion q;
 		q.setRPY(roll, pitch, yaw);
-		tf::Transform transform(q, tf::Vector3(x, y, z));
+		tf2::Vector3 v(x, y, z);
 
 		/* marker's corners:
 			0    1
 			3    2
 		*/
 		double halflen = length / 2;
-		tf::Point p0(-halflen, halflen, 0);
-		tf::Point p1(halflen, halflen, 0);
-		tf::Point p2(halflen, -halflen, 0);
-		tf::Point p3(-halflen, -halflen, 0);
+		tf2::Vector3 p0(-halflen, halflen, 0);
+		tf2::Vector3 p1(halflen, halflen, 0);
+		tf2::Vector3 p2(halflen, -halflen, 0);
+		tf2::Vector3 p3(-halflen, -halflen, 0);
+		
+		tf2::Transform transform(q, v);
 		p0 = transform * p0;
 		p1 = transform * p1;
 		p2 = transform * p2;
@@ -485,62 +481,55 @@ publish_debug:
 
 		// Add marker's static transform
 		if (!markers_frame_.empty()) {
-			geometry_msgs::TransformStamped marker_transform;
+			geometry_msgs::msg::TransformStamped marker_transform;
 			marker_transform.header.frame_id = markers_parent_frame_;
 			marker_transform.child_frame_id = markers_frame_ + std::to_string(id);
-			tf::transformTFToMsg(transform, marker_transform.transform);
+			marker_transform.transform = tf2::toMsg(transform);
 			markers_transforms_.push_back(marker_transform);
 		}
 
 		// Add marker to array
-		aruco_pose::Marker marker;
+		aruco_pose::msg::Marker marker;
 		marker.id = id;
 		marker.length = length;
 		marker.pose.position.x = x;
 		marker.pose.position.y = y;
 		marker.pose.position.z = z;
-		tf::quaternionTFToMsg(q, marker.pose.orientation);
+		marker.pose.orientation = tf2::toMsg(q);
 		markers_.markers.push_back(marker);
 
 		// Add visualization marker
-		visualization_msgs::Marker vis_marker;
+		visualization_msgs::msg::Marker vis_marker;
 		vis_marker.header.frame_id = transform_.child_frame_id;
-		vis_marker.action = visualization_msgs::Marker::ADD;
-		vis_marker.id = vis_array_.markers.size();
+		vis_marker.action = visualization_msgs::msg::Marker::ADD;
+		vis_marker.id = static_cast<int>(vis_array_.markers.size());
 		vis_marker.ns = "aruco_map_marker";
-		vis_marker.type = visualization_msgs::Marker::CUBE;
+		vis_marker.type = visualization_msgs::msg::Marker::CUBE;
 		vis_marker.scale.x = length;
 		vis_marker.scale.y = length;
 		vis_marker.scale.z = 0.001;
-		vis_marker.color.r = 1;
+		vis_marker.color.r = 1.0;
 		vis_marker.color.g = 0.5;
 		vis_marker.color.b = 0.5;
 		vis_marker.color.a = 0.8;
 		vis_marker.pose.position.x = x;
 		vis_marker.pose.position.y = y;
 		vis_marker.pose.position.z = z;
-		tf::quaternionTFToMsg(q, vis_marker.pose.orientation);
+		vis_marker.pose.orientation = tf2::toMsg(q);
 		vis_marker.frame_locked = true;
 		vis_array_.markers.push_back(vis_marker);
-
-		// Add linking line
-		// geometry_msgs::Point p;
-		// p.x = x;
-		// p.y = y;
-		// p.z = z;
-		// vis_array_.markers.at(0).points.push_back(p);
 	}
 
 	void publishMarkersFrames()
 	{
 		if (!markers_transforms_.empty()) {
-			static_br_.sendTransform(markers_transforms_);
+			static_br_->sendTransform(markers_transforms_);
 		}
 	}
 
 	void publishMarkers()
 	{
-		markers_pub_.publish(markers_);
+		markers_pub_->publish(markers_);
 	}
 
 	void publishMapImage()
@@ -560,24 +549,35 @@ publish_debug:
 		}
 
 		msg.image = image;
-		img_pub_.publish(msg.toImageMsg());
+		img_pub_->publish(*msg.toImageMsg());
 	}
 
-	void paramCallback(aruco_pose::MapConfig &config, uint32_t level)
+	rcl_interfaces::msg::SetParametersResult paramCallback(const std::vector<rclcpp::Parameter> & parameters)
 	{
-		// https://github.com/CopterExpress/clover/commit/2cd334c474e3ed04ef65ca1ba7f08ab535a3dc6d#diff-942723f9452c398ae93f1a91427f9a7b614be5e5871f8a3e590f324d804f0d58R356
-		enabled_ = config.enabled;
-		if (type_ == "map" && config.map != map_) {
-			map_ = config.map;
-			loadMap(map_);
-			publishMap();
+		rcl_interfaces::msg::SetParametersResult result;
+		result.successful = true;
+		
+		for (const auto & param : parameters) {
+			if (param.get_name() == "enabled") {
+				enabled_ = param.as_bool();
+			} else if (param.get_name() == "map" && type_ == "map") {
+				std::string new_map = param.as_string();
+				if (new_map != map_) {
+					map_ = new_map;
+					loadMap(map_);
+					publishMap();
+				}
+			} else if (param.get_name() == "image_axis") {
+				bool new_image_axis = param.as_bool();
+				if (new_image_axis != image_axis_) {
+					image_axis_ = new_image_axis;
+					publishMapImage();
+				}
+			}
 		}
-
-		if (config.image_axis != image_axis_) {
-			image_axis_ = config.image_axis;
-			publishMapImage();
-		}
+		
+		return result;
 	}
 };
 
-PLUGINLIB_EXPORT_CLASS(ArucoMap, nodelet::Nodelet)
+RCLCPP_COMPONENTS_REGISTER_NODE(ArucoMap)

@@ -12,30 +12,32 @@
 #pragma once
 
 #include <cmath>
-#include <ros/ros.h>
-#include <tf/transform_datatypes.h>
-#include <geometry_msgs/Quaternion.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/Vector3.h>
-#include <sensor_msgs/CameraInfo.h>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 #include <opencv2/opencv.hpp>
 
 // Read required param or shutdown the node
 template<typename T>
-static void param(ros::NodeHandle nh, const std::string& param_name, T& param_val)
+static void param(rclcpp::Node* node, const std::string& param_name, T& param_val)
 {
-	if (!nh.getParam(param_name, param_val)) {
-		ROS_FATAL("Required param %s is not defined", param_name.c_str());
-		ros::shutdown();
+	if (!node->get_parameter(param_name, param_val)) {
+		RCLCPP_FATAL(node->get_logger(), "Required param %s is not defined", param_name.c_str());
+		rclcpp::shutdown();
 	}
 }
 
-static void parseCameraInfo(const sensor_msgs::CameraInfoConstPtr& cinfo, cv::Mat& matrix, cv::Mat& dist)
+static void parseCameraInfo(const sensor_msgs::msg::CameraInfo::SharedPtr& cinfo, cv::Mat& matrix, cv::Mat& dist)
 {
 	for (unsigned int i = 0; i < 3; ++i)
 		for (unsigned int j = 0; j < 3; ++j)
-			matrix.at<double>(i, j) = cinfo->K[3 * i + j];
-	dist = cv::Mat(cinfo->D, true);
+			matrix.at<double>(i, j) = cinfo->k[3 * i + j];
+	dist = cv::Mat(cinfo->d, true);
 }
 
 inline void rotatePoint(cv::Point3f& p, cv::Point3f origin, float angle)
@@ -56,13 +58,13 @@ inline void rotatePoint(cv::Point3f& p, cv::Point3f origin, float angle)
 	p.y = ynew + origin.y;
 }
 
-inline void fillPose(geometry_msgs::Pose& pose, const cv::Vec3d& rvec, const cv::Vec3d& tvec)
+inline void fillPose(geometry_msgs::msg::Pose& pose, const cv::Vec3d& rvec, const cv::Vec3d& tvec)
 {
 	pose.position.x = tvec[0];
 	pose.position.y = tvec[1];
 	pose.position.z = tvec[2];
 
-	double angle = norm(rvec);
+	double angle = cv::norm(rvec);
 	cv::Vec3d axis = rvec / angle;
 
 	tf2::Quaternion q;
@@ -74,13 +76,13 @@ inline void fillPose(geometry_msgs::Pose& pose, const cv::Vec3d& rvec, const cv:
 	pose.orientation.z = q.z();
 }
 
-inline void fillTransform(geometry_msgs::Transform& transform, const cv::Vec3d& rvec, const cv::Vec3d& tvec)
+inline void fillTransform(geometry_msgs::msg::Transform& transform, const cv::Vec3d& rvec, const cv::Vec3d& tvec)
 {
 	transform.translation.x = tvec[0];
 	transform.translation.y = tvec[1];
 	transform.translation.z = tvec[2];
 
-	double angle = norm(rvec);
+	double angle = cv::norm(rvec);
 	cv::Vec3d axis = rvec / angle;
 
 	tf2::Quaternion q;
@@ -92,42 +94,46 @@ inline void fillTransform(geometry_msgs::Transform& transform, const cv::Vec3d& 
 	transform.rotation.z = q.z();
 }
 
-inline void fillTranslation(geometry_msgs::Vector3& translation, const cv::Vec3d& tvec)
+inline void fillTranslation(geometry_msgs::msg::Vector3& translation, const cv::Vec3d& tvec)
 {
 	translation.x = tvec[0];
 	translation.y = tvec[1];
 	translation.z = tvec[2];
 }
 
-inline bool isFlipped(tf::Quaternion& q)
+inline bool isFlipped(tf2::Quaternion& q)
 {
 	double yaw, pitch, roll;
-	tf::Matrix3x3(q).getEulerYPR(yaw, pitch, roll);
+	tf2::Matrix3x3(q).getEulerYPR(yaw, pitch, roll);
 	return (abs(pitch) > M_PI / 2) || (abs(roll) > M_PI / 2);
 }
 
 /* Apply a vertical to an orientation */
-inline void applyVertical(geometry_msgs::Quaternion& orientation, const geometry_msgs::Quaternion& vertical,
+inline void applyVertical(geometry_msgs::msg::Quaternion& orientation, const geometry_msgs::msg::Quaternion& vertical,
                           bool flip_vertical = false, bool auto_flip = false) // editorconfig-checker-disable-line
 {
-	tf::Quaternion _vertical, _orientation;
-	tf::quaternionMsgToTF(vertical, _vertical);
-	tf::quaternionMsgToTF(orientation, _orientation);
+	tf2::Quaternion _vertical, _orientation;
+	tf2::fromMsg(vertical, _vertical);
+	tf2::fromMsg(orientation, _orientation);
 
 	if (flip_vertical || (auto_flip && !isFlipped(_orientation))) {
-		static const tf::Quaternion flip = tf::createQuaternionFromRPY(M_PI, 0, 0);
+		tf2::Quaternion flip;
+		flip.setRPY(M_PI, 0, 0);
 		_vertical *= flip; // flip vertical
 	}
 
-	auto diff = tf::Matrix3x3(_orientation).transposeTimes(tf::Matrix3x3(_vertical));
+	tf2::Matrix3x3 m_orientation(_orientation);
+	tf2::Matrix3x3 m_vertical(_vertical);
+	auto diff = m_orientation.transposeTimes(m_vertical);
 	double _, yaw;
-	diff.getRPY(_, _, yaw);
-	auto q = tf::createQuaternionFromRPY(0, 0, -yaw);
+	diff.getEulerYPR(yaw, _, _);
+	tf2::Quaternion q;
+	q.setRPY(0, 0, -yaw);
 	_vertical = _vertical * q; // set yaw from orientation to vertical
-	tf::quaternionTFToMsg(_vertical, orientation); // set vertical to orientation
+	orientation = tf2::toMsg(_vertical); // set vertical to orientation
 }
 
-inline void transformToPose(const geometry_msgs::Transform& transform, geometry_msgs::Pose& pose)
+inline void transformToPose(const geometry_msgs::msg::Transform& transform, geometry_msgs::msg::Pose& pose)
 {
 	pose.position.x = transform.translation.x;
 	pose.position.y = transform.translation.y;

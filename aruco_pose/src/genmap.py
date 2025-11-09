@@ -10,7 +10,7 @@
 
 """Markers map generator
 
-Generate map file for aruco_map nodelet.
+Generate map file for aruco_map node.
 
 Usage:
   genmap.py <length> <x> <y> <dist_x> <dist_y> [<first>] [<x0>] [<y0>] [--top-left | --bottom-left] [-o <filename>]
@@ -30,7 +30,7 @@ Options:
   -o <filename>  Output map file name in the 'map' subdirectory of aruco_pose package
 
 Example:
-  rosrun aruco_pose genmap.py 0.33 2 4 1 1 0 -o test_map.txt
+  ros2 run aruco_pose genmap.py 0.33 2 4 1 1 0 -o test_map.txt
 """
 
 from __future__ import print_function

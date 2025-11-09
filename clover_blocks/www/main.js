@@ -15,7 +15,8 @@ import {generateCode, generateUserCode} from './python.js';
 // Function to get image topics from ROS
 async function getImageTopicsFromROS() {
     try {
-        if (window.ros && window.ros.ros && window.ros.ros.isConnected) {
+        // Check if ROS is available and connected
+        if (ros && ros.isConnected && ros.socket && ros.socket.readyState === WebSocket.OPEN) {
             console.log('Fetching image topics from ROS...');
             
             // Get all topics from ROS with timeout
@@ -24,7 +25,7 @@ async function getImageTopicsFromROS() {
                     reject(new Error('Timeout while fetching topics'));
                 }, 5000); // 5 second timeout
                 
-                window.ros.ros.getTopics((topics) => {
+                ros.getTopics((topics) => {
                     clearTimeout(timeout);
                     resolve(topics);
                 }, (error) => {
@@ -95,6 +96,12 @@ async function getImageTopicsFromROS() {
             return imageTopics;
         } else {
             console.log('ROS not connected, using default topics');
+            console.log('ROS status:', {
+                ros: !!ros,
+                isConnected: ros?.isConnected,
+                socket: ros?.socket,
+                socketState: ros?.socket?.readyState
+            });
         }
     } catch (e) {
         console.warn('Could not fetch image topics from ROS:', e);
@@ -110,6 +117,43 @@ async function getImageTopicsFromROS() {
 
 // Make function available globally for blocks.js
 window.getImageTopicsFromROS = getImageTopicsFromROS;
+
+// Add manual refresh function for debugging
+window.refreshImageTopics = async () => {
+    console.log('Manually refreshing image topics...');
+    try {
+        if (window.updateImageTopics) {
+            await window.updateImageTopics();
+            console.log('Manual refresh completed');
+        } else {
+            console.error('updateImageTopics function not available');
+        }
+    } catch (e) {
+        console.error('Manual refresh failed:', e);
+    }
+};
+
+// Listen for ROS connection events
+if (typeof window !== 'undefined' && ros) {
+    ros.on('connection', async () => {
+        console.log('ROS connected, updating image topics...');
+        try {
+            if (window.updateImageTopics) {
+                await window.updateImageTopics();
+            }
+        } catch (e) {
+            console.warn('Failed to update topics on ROS connection:', e);
+        }
+    });
+    
+    ros.on('close', () => {
+        console.log('ROS disconnected');
+    });
+    
+    ros.on('error', (error) => {
+        console.error('ROS connection error:', error);
+    });
+}
 
 // Update image topics when ROS connects
 if (typeof window !== 'undefined') {
